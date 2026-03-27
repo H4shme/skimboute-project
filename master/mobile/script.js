@@ -1,4 +1,3 @@
-
 // ════════════════════════════════════════════════════════════════
 // JS SECTION 1 — ÉTAT GLOBAL / GLOBAL STATE
 // FR : Variables partagées dans toute l'application
@@ -25,7 +24,6 @@ const presValues  = [false, false];   // FR: États de présence / EN: Presence 
 async function toggleBT() {
   if (connected) { disconnectBT(); return; }
 
-  // Tentative de connexion Web Bluetooth réelle / Attempt real Web Bluetooth
   if (navigator.bluetooth) {
     try {
       log('Recherche Bluetooth…', 'info');
@@ -46,7 +44,7 @@ async function toggleBT() {
 
     } catch(e) {
       log('BT erreur: ' + e.message, 'err');
-      startSimulation(); // Fallback simulation
+      startSimulation();
     }
   } else {
     log('Web Bluetooth non dispo → mode simulation', 'warn');
@@ -92,11 +90,9 @@ function onBTData(event) {
 
 // FR: Applique les données de télémétrie à l'UI / EN: Applies telemetry data to the UI
 function applyTelemetry(d) {
-  // RPM moteurs / Motor RPM
   if (d.rpmL !== undefined) document.getElementById('rpmL').textContent = d.rpmL + ' RPM';
   if (d.rpmR !== undefined) document.getElementById('rpmR').textContent = d.rpmR + ' RPM';
 
-  // Présence / Presence
   if (d.pres) {
     d.pres.forEach((v, i) => {
       presValues[i] = v;
@@ -113,7 +109,6 @@ function applyTelemetry(d) {
     });
   }
 
-  // Humidité / Humidity
   if (d.hum) {
     let alertList = [];
     d.hum.forEach((v, i) => {
@@ -157,7 +152,7 @@ function disconnectBT() {
   onBTDisconnect();
 }
 
-// FR: Appelée à la déconnexion (manuelle ou perte de signal) / EN: Called on disconnect (manual or signal loss)
+// FR: Appelée à la déconnexion / EN: Called on disconnect
 function onBTDisconnect() {
   connected = false;
   document.getElementById('btBtn').classList.remove('on');
@@ -173,34 +168,28 @@ function onBTDisconnect() {
 
 // ════════════════════════════════════════════════════════════════
 // JS SECTION 3 — MOTEURS / MOTORS
-// FR : Gestion de la puissance des moteurs gauche et droit
-// EN : Left and right motor power management
 // ════════════════════════════════════════════════════════════════
 
-let motorVals = { L: 0, R: 0 }; // FR: Puissance 0-100% / EN: Power 0-100%
-let holdTimer = null;             // FR: Timer pour appui long / EN: Hold timer
+let motorVals = { L: 0, R: 0 };
+let holdTimer = null;
 
-// FR: Démarre une répétition automatique sur appui long / EN: Starts auto-repeat on hold
 function startHold(side, delta) {
   stepMotor(side, delta);
   holdTimer = setInterval(() => stepMotor(side, delta), 150);
 }
 function stopHold() { clearInterval(holdTimer); }
 
-// FR: Incrémente/décrémente la puissance d'un moteur / EN: Increments/decrements a motor's power
 function stepMotor(side, delta) {
   motorVals[side] = Math.max(0, Math.min(100, motorVals[side] + delta));
   updateMotorUI(side);
   sendBT({ type: 'motor', side: side, power: motorVals[side] });
 }
 
-// FR: Définit directement la valeur d'un moteur / EN: Directly sets a motor value
 function setMotor(side, val) {
   motorVals[side] = Math.max(0, Math.min(100, parseInt(val)));
   updateMotorUI(side);
 }
 
-// FR: Met à jour l'affichage (% + barre) / EN: Updates the display (% + bar)
 function updateMotorUI(side) {
   const v = motorVals[side];
   document.getElementById('pct' + side).textContent = v + '%';
@@ -209,8 +198,6 @@ function updateMotorUI(side) {
 
 // ════════════════════════════════════════════════════════════════
 // JS SECTION 4 — LAMPE / LAMP
-// FR : Allume/éteint la lampe de surface via BLE
-// EN : Turns surface lamp on/off via BLE
 // ════════════════════════════════════════════════════════════════
 
 function toggleLamp() {
@@ -233,11 +220,8 @@ function toggleLamp() {
 
 // ════════════════════════════════════════════════════════════════
 // JS SECTION 5 — COMMANDES / COMMANDS
-// FR : Envoi d'une commande groupée + arrêt d'urgence
-// EN : Send grouped command + emergency stop
 // ════════════════════════════════════════════════════════════════
 
-// FR: Envoie l'état complet (moteurs + lampe) / EN: Sends full state (motors + lamp)
 function sendCmd() {
   const l = motorVals['L'];
   const r = motorVals['R'];
@@ -245,7 +229,6 @@ function sendCmd() {
   log('CMD envoyée → L:' + l + '% R:' + r + '%', 'ok');
 }
 
-// FR: Coupe tout immédiatement / EN: Cuts everything immediately
 function emergencyStop() {
   motorVals['L'] = 0;
   motorVals['R'] = 0;
@@ -255,7 +238,6 @@ function emergencyStop() {
   log('ARRÊT D\'URGENCE', 'err');
 }
 
-// FR: Envoie un objet JSON via BLE / EN: Sends a JSON object via BLE
 function sendBT(obj) {
   if (!btChar) return;
   const enc = new TextEncoder();
@@ -265,13 +247,10 @@ function sendBT(obj) {
 
 // ════════════════════════════════════════════════════════════════
 // JS SECTION 6 — ALERTES / ALERTS
-// FR : Affichage de l'alerte humidité + vibration
-// EN : Humidity alert display + vibration
 // ════════════════════════════════════════════════════════════════
 
 let alertActive = false;
 
-// FR: Affiche l'alerte (une seule à la fois) / EN: Shows the alert (one at a time)
 function showAlert(msg) {
   if (alertActive) return;
   alertActive = true;
@@ -281,7 +260,6 @@ function showAlert(msg) {
   log('ALERTE HUMIDITÉ: ' + msg.replace('\n', ' | '), 'err');
 }
 
-// FR: Acquitte et ferme l'alerte / EN: Acknowledges and closes the alert
 function dismissAlert() {
   alertActive = false;
   document.getElementById('alertOverlay').classList.remove('show');
@@ -289,8 +267,6 @@ function dismissAlert() {
 
 // ════════════════════════════════════════════════════════════════
 // JS SECTION 7 — SEUILS D'HUMIDITÉ / HUMIDITY THRESHOLDS
-// FR : Mise à jour des seuils depuis la page Réglages
-// EN : Update thresholds from the Settings page
 // ════════════════════════════════════════════════════════════════
 
 function updateThreshold(i, val) {
@@ -301,19 +277,17 @@ function updateThreshold(i, val) {
 
 // ════════════════════════════════════════════════════════════════
 // JS SECTION 8 — UTILITAIRES UI / UI HELPERS
-// FR : Navigation entre pages, log, timestamp
-// EN : Page navigation, log, timestamp
 // ════════════════════════════════════════════════════════════════
 
-// FR: Change de page en cliquant sur un onglet / EN: Switches page on tab click
-function showPage(name) {
+// FR: Change de page — reçoit l'event en paramètre explicite (corrige le bug 'event' non défini)
+// EN: Switches page — receives event as explicit parameter (fixes 'event' undefined bug)
+function showPage(name, evt) {
   document.querySelectorAll('.page').forEach(p => p.classList.remove('active'));
   document.querySelectorAll('.tab').forEach(t => t.classList.remove('active'));
   document.getElementById('page-' + name).classList.add('active');
-  event.target.classList.add('active');
+  if (evt && evt.target) evt.target.classList.add('active');
 }
 
-// FR: Ajoute une ligne dans le journal / EN: Adds a line in the log
 function log(msg, cls) {
   const box = document.getElementById('logBox');
   const el  = document.createElement('div');
@@ -323,24 +297,18 @@ function log(msg, cls) {
   if (autoScroll) box.scrollTop = box.scrollHeight;
 }
 
-// FR: Efface le journal / EN: Clears the log
 function clearLog() {
   document.getElementById('logBox').innerHTML = '';
   log('Journal effacé', 'info');
 }
 
-// FR: Active/désactive le défilement automatique / EN: Toggles auto-scroll
 function toggleAutoScroll() {
   autoScroll = !autoScroll;
   document.getElementById('autoScrollBtn').textContent = 'Auto-scroll: ' + (autoScroll ? 'ON' : 'OFF');
 }
 
-// FR: Retourne l'heure courante HH:MM:SS / EN: Returns current time HH:MM:SS
 function ts() {
   const d = new Date();
   return [d.getHours(), d.getMinutes(), d.getSeconds()]
     .map(n => String(n).padStart(2, '0')).join(':');
 }
-</script>
-</body>
-</html>
