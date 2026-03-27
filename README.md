@@ -1,4 +1,3 @@
 # skimboute-project
 
-
-bien ?
+leo tie mort la cpe elle vas te jmeh
