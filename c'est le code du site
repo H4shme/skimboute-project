@@ -1,0 +1,720 @@
+<!DOCTYPE html>
+<html lang="fr">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0, user-scalable=no">
+<meta name="theme-color" content="#0a0f1a">
+<meta name="mobile-web-app-capable" content="yes">
+<meta name="apple-mobile-web-app-capable" content="yes">
+<title>SkimBot</title>
+<link href="https://fonts.googleapis.com/css2?family=DM+Mono:wght@400;500&family=Syne:wght@400;500;700&display=swap" rel="stylesheet">
+<style>
+:root {
+  --bg: #0a0f1a;
+  --bg2: #111827;
+  --bg3: #1a2235;
+  --border: rgba(255,255,255,0.08);
+  --border2: rgba(255,255,255,0.15);
+  --text: #f0f4ff;
+  --muted: #6b7a99;
+  --accent: #00d4aa;
+  --accent2: #0088ff;
+  --warn: #ffaa00;
+  --danger: #ff4455;
+  --success: #00d4aa;
+  --lamp: #ffcc44;
+  --mono: 'DM Mono', monospace;
+  --sans: 'Syne', sans-serif;
+}
+* { box-sizing: border-box; margin: 0; padding: 0; -webkit-tap-highlight-color: transparent; }
+html, body { height: 100%; background: var(--bg); color: var(--text); font-family: var(--sans); overflow-x: hidden; }
+ 
+/* ALERT OVERLAY */
+#alertOverlay {
+  display: none;
+  position: fixed; inset: 0; z-index: 999;
+  background: rgba(255,68,85,0.18);
+  backdrop-filter: blur(2px);
+  justify-content: center;
+  align-items: flex-start;
+  padding-top: 60px;
+  animation: flashBg 1s infinite;
+}
+#alertOverlay.show { display: flex; }
+@keyframes flashBg { 0%,100%{background:rgba(255,68,85,0.18)} 50%{background:rgba(255,68,85,0.08)} }
+.alert-card {
+  background: #1a0a0f;
+  border: 1px solid var(--danger);
+  border-radius: 16px;
+  padding: 20px 24px;
+  max-width: 320px;
+  width: 90%;
+  text-align: center;
+}
+.alert-title { font-size: 18px; font-weight: 700; color: var(--danger); margin-bottom: 8px; }
+.alert-msg { font-size: 13px; color: #ffaab0; font-family: var(--mono); line-height: 1.5; margin-bottom: 16px; }
+.alert-dismiss {
+  background: var(--danger); color: #fff; border: none;
+  border-radius: 10px; padding: 10px 24px;
+  font-family: var(--sans); font-size: 14px; font-weight: 500; cursor: pointer;
+}
+ 
+/* TOPBAR */
+.topbar {
+  position: sticky; top: 0; z-index: 100;
+  background: var(--bg);
+  border-bottom: 0.5px solid var(--border);
+  padding: 14px 16px 12px;
+  display: flex; justify-content: space-between; align-items: center;
+}
+.app-name { font-size: 22px; font-weight: 700; letter-spacing: -0.5px; }
+.app-name span { color: var(--accent); }
+.bt-btn {
+  display: flex; align-items: center; gap: 6px;
+  padding: 6px 14px; border-radius: 20px;
+  border: 0.5px solid var(--border2);
+  background: var(--bg2); color: var(--muted);
+  font-family: var(--sans); font-size: 12px; font-weight: 500;
+  cursor: pointer; transition: all 0.2s;
+}
+.bt-btn.on { border-color: var(--accent); color: var(--accent); background: rgba(0,212,170,0.08); }
+.bt-dot { width: 7px; height: 7px; border-radius: 50%; background: currentColor; }
+.bt-dot.pulse { animation: pulse 1.2s infinite; }
+@keyframes pulse { 0%,100%{opacity:1} 50%{opacity:0.2} }
+ 
+/* TABS */
+.tabs {
+  display: flex; gap: 0;
+  border-bottom: 0.5px solid var(--border);
+  background: var(--bg);
+  position: sticky; top: 57px; z-index: 99;
+}
+.tab {
+  flex: 1; padding: 11px 4px; text-align: center;
+  font-size: 12px; font-weight: 500; color: var(--muted);
+  cursor: pointer; border-bottom: 2px solid transparent;
+  transition: all 0.2s; letter-spacing: 0.3px;
+}
+.tab.active { color: var(--accent); border-bottom-color: var(--accent); }
+ 
+/* PAGES */
+.page { display: none; padding: 16px; padding-bottom: 32px; }
+.page.active { display: block; }
+ 
+/* SECTION HEADER */
+.sec { font-size: 10px; font-weight: 700; color: var(--muted); letter-spacing: 1.2px; text-transform: uppercase; margin: 20px 0 10px; }
+.sec:first-child { margin-top: 4px; }
+ 
+/* CARDS */
+.card {
+  background: var(--bg2);
+  border: 0.5px solid var(--border);
+  border-radius: 14px;
+  padding: 14px 16px;
+  margin-bottom: 10px;
+}
+ 
+/* MOTOR CONTROLS */
+.motor-block { margin-bottom: 0; }
+.motor-head { display: flex; justify-content: space-between; align-items: center; margin-bottom: 12px; }
+.motor-label { font-size: 14px; font-weight: 500; }
+.motor-pct { font-family: var(--mono); font-size: 18px; color: var(--accent); }
+.motor-ctrl {
+  display: flex; align-items: center; justify-content: space-between; gap: 12px;
+}
+.motor-btn {
+  width: 52px; height: 52px; border-radius: 14px;
+  background: var(--bg3); border: 0.5px solid var(--border2);
+  color: var(--text); font-size: 26px; font-weight: 400;
+  display: flex; align-items: center; justify-content: center;
+  cursor: pointer; user-select: none; transition: all 0.1s;
+  font-family: var(--mono); flex-shrink: 0;
+}
+.motor-btn:active { background: var(--accent); color: var(--bg); transform: scale(0.93); }
+.motor-btn.disabled { opacity: 0.3; pointer-events: none; }
+.motor-bar-wrap {
+  flex: 1; height: 8px; border-radius: 4px;
+  background: var(--bg3); overflow: hidden; position: relative;
+}
+.motor-bar-fill {
+  height: 100%; border-radius: 4px;
+  background: var(--accent); width: 0%;
+  transition: width 0.2s ease;
+}
+.motor-steps {
+  display: flex; justify-content: space-between;
+  margin-top: 5px; padding: 0 2px;
+}
+.motor-step { font-size: 9px; color: var(--muted); font-family: var(--mono); }
+.rpm-row { display: flex; justify-content: space-between; align-items: center; margin-top: 10px; }
+.rpm-label { font-size: 11px; color: var(--muted); }
+.rpm-val { font-family: var(--mono); font-size: 12px; color: var(--muted); }
+ 
+/* LAMP */
+.lamp-card { display: flex; justify-content: space-between; align-items: center; }
+.lamp-info .lamp-name { font-size: 15px; font-weight: 500; }
+.lamp-info .lamp-status { font-size: 12px; color: var(--muted); margin-top: 2px; font-family: var(--mono); }
+.lamp-info .lamp-status.on { color: var(--lamp); }
+.toggle {
+  width: 52px; height: 28px; border-radius: 14px;
+  background: var(--bg3); border: 0.5px solid var(--border2);
+  position: relative; cursor: pointer; transition: background 0.2s;
+  flex-shrink: 0;
+}
+.toggle.on { background: var(--lamp); border-color: var(--lamp); }
+.toggle::after {
+  content: ''; position: absolute; width: 22px; height: 22px;
+  border-radius: 50%; background: #fff; top: 3px; left: 3px;
+  transition: transform 0.2s;
+}
+.toggle.on::after { transform: translateX(24px); }
+ 
+/* SENSORS PAGE */
+.presence-grid { display: grid; grid-template-columns: 1fr 1fr; gap: 10px; }
+.pres-card {
+  background: var(--bg2); border: 0.5px solid var(--border);
+  border-radius: 14px; padding: 14px 12px; text-align: center;
+}
+.pres-card.detected { border-color: var(--warn); background: rgba(255,170,0,0.07); }
+.pres-icon { font-size: 28px; margin-bottom: 6px; }
+.pres-name { font-size: 12px; color: var(--muted); margin-bottom: 4px; }
+.pres-state { font-size: 13px; font-weight: 500; font-family: var(--mono); color: var(--muted); }
+.pres-card.detected .pres-state { color: var(--warn); }
+ 
+.hum-grid { display: grid; grid-template-columns: 1fr 1fr; gap: 10px; }
+.hum-card {
+  background: var(--bg2); border: 0.5px solid var(--border);
+  border-radius: 14px; padding: 14px 12px;
+}
+.hum-card.alert { border-color: var(--danger); background: rgba(255,68,85,0.07); }
+.hum-top { display: flex; justify-content: space-between; align-items: flex-start; margin-bottom: 6px; }
+.hum-name { font-size: 12px; color: var(--muted); }
+.hum-badge {
+  font-size: 10px; font-family: var(--mono); padding: 2px 7px;
+  border-radius: 6px; background: rgba(107,122,153,0.2); color: var(--muted);
+}
+.hum-card.alert .hum-badge { background: rgba(255,68,85,0.2); color: var(--danger); }
+.hum-val { font-size: 26px; font-weight: 700; font-family: var(--mono); line-height: 1; }
+.hum-card.alert .hum-val { color: var(--danger); }
+.hum-bar-bg { margin-top: 8px; height: 3px; border-radius: 2px; background: var(--bg3); }
+.hum-bar { height: 100%; border-radius: 2px; background: var(--accent2); transition: width 0.5s ease; }
+.hum-card.alert .hum-bar { background: var(--danger); }
+.hum-threshold { font-size: 10px; color: var(--muted); margin-top: 4px; font-family: var(--mono); }
+ 
+/* LOG PAGE */
+.log-controls { display: flex; gap: 8px; margin-bottom: 10px; }
+.log-btn {
+  padding: 7px 14px; border-radius: 8px; font-family: var(--sans);
+  font-size: 12px; font-weight: 500; cursor: pointer;
+  border: 0.5px solid var(--border2); background: var(--bg2); color: var(--muted);
+  transition: all 0.15s;
+}
+.log-btn:hover { color: var(--text); border-color: var(--accent); }
+.log-box {
+  background: var(--bg2); border: 0.5px solid var(--border);
+  border-radius: 14px; padding: 12px 14px;
+  font-family: var(--mono); font-size: 11px;
+  max-height: 420px; overflow-y: auto; line-height: 1.7;
+}
+.log-entry { color: var(--muted); }
+.log-entry.ok { color: var(--success); }
+.log-entry.warn { color: var(--warn); }
+.log-entry.err { color: var(--danger); }
+.log-entry.info { color: var(--accent2); }
+ 
+/* THRESHOLD SETTINGS */
+.thresh-row { display: flex; justify-content: space-between; align-items: center; padding: 10px 0; border-bottom: 0.5px solid var(--border); }
+.thresh-row:last-child { border-bottom: none; }
+.thresh-name { font-size: 13px; }
+.thresh-ctrl { display: flex; align-items: center; gap: 8px; }
+.thresh-num {
+  width: 52px; padding: 5px 8px; border-radius: 8px;
+  background: var(--bg3); border: 0.5px solid var(--border2);
+  color: var(--text); font-family: var(--mono); font-size: 13px;
+  text-align: center; outline: none;
+}
+.thresh-unit { font-size: 12px; color: var(--muted); }
+ 
+/* STATUS BAR */
+.statusbar {
+  display: flex; justify-content: space-between; padding: 10px 16px;
+  background: var(--bg2); border-top: 0.5px solid var(--border);
+  position: fixed; bottom: 0; left: 0; right: 0;
+  font-family: var(--mono); font-size: 11px; color: var(--muted);
+}
+.status-dot { display: inline-block; width: 6px; height: 6px; border-radius: 50%; background: var(--muted); margin-right: 4px; vertical-align: middle; }
+.status-dot.on { background: var(--success); }
+ 
+/* DISCONNECTED LOCK */
+.locked { opacity: 0.35; pointer-events: none; }
+</style>
+</head>
+<body>
+ 
+<!-- ALERT OVERLAY -->
+<div id="alertOverlay">
+  <div class="alert-card">
+    <div class="alert-title">⚠ ALERTE HUMIDITÉ</div>
+    <div class="alert-msg" id="alertMsg">—</div>
+    <button class="alert-dismiss" onclick="dismissAlert()">Acquitter</button>
+  </div>
+</div>
+ 
+<!-- TOPBAR -->
+<div class="topbar">
+  <div class="app-name">Skim<span>Bot</span></div>
+  <button class="bt-btn" id="btBtn" onclick="toggleBT()">
+    <span class="bt-dot" id="btDot"></span>
+    <span id="btLabel">Connecter</span>
+  </button>
+</div>
+ 
+<!-- TABS -->
+<div class="tabs">
+  <div class="tab active" onclick="showPage('ctrl')">Contrôle</div>
+  <div class="tab" onclick="showPage('sensors')">Capteurs</div>
+  <div class="tab" onclick="showPage('settings')">Réglages</div>
+  <div class="tab" onclick="showPage('log')">Journal</div>
+</div>
+ 
+<!-- PAGE: CONTROL -->
+<div class="page active" id="page-ctrl">
+  <div class="sec">Moteurs</div>
+  <div id="motorZone">
+    <div class="card motor-block">
+      <div class="motor-head">
+        <span class="motor-label">◀ Moteur gauche</span>
+        <span class="motor-pct" id="pctL">0%</span>
+      </div>
+      <div class="motor-ctrl">
+        <button class="motor-btn disabled" id="btnLm" ontouchstart="startHold('L',-5)" ontouchend="stopHold()" onmousedown="startHold('L',-5)" onmouseup="stopHold()">−</button>
+        <div style="flex:1">
+          <div class="motor-bar-wrap"><div class="motor-bar-fill" id="barL"></div></div>
+          <div class="motor-steps"><span class="motor-step">0</span><span class="motor-step">25</span><span class="motor-step">50</span><span class="motor-step">75</span><span class="motor-step">100</span></div>
+        </div>
+        <button class="motor-btn disabled" id="btnLp" ontouchstart="startHold('L',5)" ontouchend="stopHold()" onmousedown="startHold('L',5)" onmouseup="stopHold()">+</button>
+      </div>
+      <div class="rpm-row">
+        <span class="rpm-label">RPM retour</span>
+        <span class="rpm-val" id="rpmL">— RPM</span>
+      </div>
+    </div>
+    <div class="card motor-block">
+      <div class="motor-head">
+        <span class="motor-label">▶ Moteur droit</span>
+        <span class="motor-pct" id="pctR">0%</span>
+      </div>
+      <div class="motor-ctrl">
+        <button class="motor-btn disabled" id="btnRm" ontouchstart="startHold('R',-5)" ontouchend="stopHold()" onmousedown="startHold('R',-5)" onmouseup="stopHold()">−</button>
+        <div style="flex:1">
+          <div class="motor-bar-wrap"><div class="motor-bar-fill" id="barR"></div></div>
+          <div class="motor-steps"><span class="motor-step">0</span><span class="motor-step">25</span><span class="motor-step">50</span><span class="motor-step">75</span><span class="motor-step">100</span></div>
+        </div>
+        <button class="motor-btn disabled" id="btnRp" ontouchstart="startHold('R',5)" ontouchend="stopHold()" onmousedown="startHold('R',5)" onmouseup="stopHold()">+</button>
+      </div>
+      <div class="rpm-row">
+        <span class="rpm-label">RPM retour</span>
+        <span class="rpm-val" id="rpmR">— RPM</span>
+      </div>
+    </div>
+  </div>
+ 
+  <div class="sec">Lampe</div>
+  <div class="card lamp-card">
+    <div class="lamp-info">
+      <div class="lamp-name">Lampe de surface</div>
+      <div class="lamp-status" id="lampStatus">Éteinte</div>
+    </div>
+    <div class="toggle" id="lampToggle" onclick="toggleLamp()"></div>
+  </div>
+ 
+  <div class="sec">Commande rapide</div>
+  <div style="display:grid;grid-template-columns:1fr 1fr;gap:10px">
+    <button class="log-btn" style="padding:12px;font-size:13px;color:var(--text);border-color:var(--border2)" onclick="sendCmd()">Envoyer</button>
+    <button class="log-btn" style="padding:12px;font-size:13px;color:var(--danger);border-color:var(--danger)" onclick="emergencyStop()">Arrêt urgence</button>
+  </div>
+</div>
+ 
+<!-- PAGE: SENSORS -->
+<div class="page" id="page-sensors">
+  <div class="sec">Capteurs de présence</div>
+  <div class="presence-grid">
+    <div class="pres-card" id="pres0">
+      <div class="pres-icon">👁</div>
+      <div class="pres-name">Présence 1</div>
+      <div class="pres-state" id="presState0">Aucune</div>
+    </div>
+    <div class="pres-card" id="pres1">
+      <div class="pres-icon">👁</div>
+      <div class="pres-name">Présence 2</div>
+      <div class="pres-state" id="presState1">Aucune</div>
+    </div>
+  </div>
+ 
+  <div class="sec">Capteurs d'humidité</div>
+  <div class="hum-grid">
+    <div class="hum-card" id="humCard0">
+      <div class="hum-top"><span class="hum-name">Humidité 1</span><span class="hum-badge" id="humBadge0">OK</span></div>
+      <div class="hum-val" id="humVal0">—<span style="font-size:14px">%</span></div>
+      <div class="hum-bar-bg"><div class="hum-bar" id="humBar0" style="width:0%"></div></div>
+      <div class="hum-threshold" id="humTh0">seuil: 80%</div>
+    </div>
+    <div class="hum-card" id="humCard1">
+      <div class="hum-top"><span class="hum-name">Humidité 2</span><span class="hum-badge" id="humBadge1">OK</span></div>
+      <div class="hum-val" id="humVal1">—<span style="font-size:14px">%</span></div>
+      <div class="hum-bar-bg"><div class="hum-bar" id="humBar1" style="width:0%"></div></div>
+      <div class="hum-threshold" id="humTh1">seuil: 80%</div>
+    </div>
+    <div class="hum-card" id="humCard2">
+      <div class="hum-top"><span class="hum-name">Humidité 3</span><span class="hum-badge" id="humBadge2">OK</span></div>
+      <div class="hum-val" id="humVal2">—<span style="font-size:14px">%</span></div>
+      <div class="hum-bar-bg"><div class="hum-bar" id="humBar2" style="width:0%"></div></div>
+      <div class="hum-threshold" id="humTh2">seuil: 80%</div>
+    </div>
+    <div class="hum-card" id="humCard3">
+      <div class="hum-top"><span class="hum-name">Humidité 4</span><span class="hum-badge" id="humBadge3">OK</span></div>
+      <div class="hum-val" id="humVal3">—<span style="font-size:14px">%</span></div>
+      <div class="hum-bar-bg"><div class="hum-bar" id="humBar3" style="width:0%"></div></div>
+      <div class="hum-threshold" id="humTh3">seuil: 80%</div>
+    </div>
+  </div>
+</div>
+ 
+<!-- PAGE: SETTINGS -->
+<div class="page" id="page-settings">
+  <div class="sec">Seuils d'alerte humidité</div>
+  <div class="card">
+    <div class="thresh-row">
+      <span class="thresh-name">Humidité 1</span>
+      <div class="thresh-ctrl">
+        <input class="thresh-num" type="number" min="0" max="100" value="80" id="th0" onchange="updateThreshold(0,this.value)">
+        <span class="thresh-unit">%</span>
+      </div>
+    </div>
+    <div class="thresh-row">
+      <span class="thresh-name">Humidité 2</span>
+      <div class="thresh-ctrl">
+        <input class="thresh-num" type="number" min="0" max="100" value="80" id="th1" onchange="updateThreshold(1,this.value)">
+        <span class="thresh-unit">%</span>
+      </div>
+    </div>
+    <div class="thresh-row">
+      <span class="thresh-name">Humidité 3</span>
+      <div class="thresh-ctrl">
+        <input class="thresh-num" type="number" min="0" max="100" value="80" id="th2" onchange="updateThreshold(2,this.value)">
+        <span class="thresh-unit">%</span>
+      </div>
+    </div>
+    <div class="thresh-row">
+      <span class="thresh-name">Humidité 4</span>
+      <div class="thresh-ctrl">
+        <input class="thresh-num" type="number" min="0" max="100" value="80" id="th3" onchange="updateThreshold(3,this.value)">
+        <span class="thresh-unit">%</span>
+      </div>
+    </div>
+  </div>
+ 
+  <div class="sec">Connexion Bluetooth</div>
+  <div class="card">
+    <div class="thresh-row">
+      <span class="thresh-name">Appareil cible</span>
+      <span style="font-family:var(--mono);font-size:12px;color:var(--accent)" id="btDeviceName">—</span>
+    </div>
+    <div class="thresh-row">
+      <span class="thresh-name">Protocole</span>
+      <span style="font-family:var(--mono);font-size:12px;color:var(--muted)">BLE SPP / Serial</span>
+    </div>
+    <div class="thresh-row" style="border:none">
+      <span class="thresh-name">UUID Service</span>
+      <span style="font-family:var(--mono);font-size:10px;color:var(--muted)">0000FFE0-…</span>
+    </div>
+  </div>
+</div>
+ 
+<!-- PAGE: LOG -->
+<div class="page" id="page-log">
+  <div class="log-controls">
+    <button class="log-btn" onclick="clearLog()">Effacer</button>
+    <button class="log-btn" id="autoScrollBtn" onclick="toggleAutoScroll()">Auto-scroll: ON</button>
+  </div>
+  <div class="log-box" id="logBox">
+    <div class="log-entry info">[--:--:--] SkimBot v1.0 — en attente de connexion BT…</div>
+  </div>
+</div>
+ 
+<!-- STATUS BAR -->
+<div class="statusbar">
+  <span><span class="status-dot" id="connDot"></span><span id="connLabel">Déconnecté</span></span>
+  <span id="statusRight" style="color:var(--muted)">—</span>
+</div>
+ 
+<script>
+// ─── STATE ───────────────────────────────────────────────
+let connected = false;
+let lampOn = false;
+let autoScroll = true;
+let simInterval = null;
+let btDevice = null, btChar = null;
+const thresholds = [80, 80, 80, 80];
+const humValues = [0, 0, 0, 0];
+const presValues = [false, false];
+ 
+// ─── BLUETOOTH ───────────────────────────────────────────
+async function toggleBT() {
+  if (connected) { disconnectBT(); return; }
+ 
+  // Real Web Bluetooth API
+  if (navigator.bluetooth) {
+    try {
+      log('Recherche Bluetooth…', 'info');
+      btDevice = await navigator.bluetooth.requestDevice({
+        acceptAllDevices: true,
+        optionalServices: ['0000ffe0-0000-1000-8000-00805f9b34fb']
+      });
+      btDevice.addEventListener('gattserverdisconnected', onBTDisconnect);
+      log('Connexion à ' + btDevice.name + '…', 'info');
+      const server = await btDevice.gatt.connect();
+      const service = await server.getPrimaryService('0000ffe0-0000-1000-8000-00805f9b34fb');
+      btChar = await service.getCharacteristic('0000ffe1-0000-1000-8000-00805f9b34fb');
+      await btChar.startNotifications();
+      btChar.addEventListener('characteristicvaluechanged', onBTData);
+      onConnected(btDevice.name);
+    } catch(e) {
+      log('BT erreur: ' + e.message, 'err');
+      // Fallback: simulation mode
+      startSimulation();
+    }
+  } else {
+    log('Web Bluetooth non dispo → mode simulation', 'warn');
+    startSimulation();
+  }
+}
+ 
+function startSimulation() {
+  onConnected('RPI-Skim [SIM]');
+  simInterval = setInterval(simulateTick, 1000);
+}
+ 
+function simulateTick() {
+  const l = motorVals['L'];
+  const r = motorVals['R'];
+  const fake = {
+    rpmL: Math.max(0, Math.round(l * 28 + (Math.random()-0.5)*40)),
+    rpmR: Math.max(0, Math.round(r * 28 + (Math.random()-0.5)*40)),
+    pres: [Math.random() > 0.85, Math.random() > 0.9],
+    hum: humValues.map((v,i) => {
+      let n = v + (Math.random()-0.48)*3;
+      n = Math.max(20, Math.min(99, n));
+      humValues[i] = Math.round(n);
+      return humValues[i];
+    })
+  };
+  applyTelemetry(fake);
+}
+ 
+function onBTData(event) {
+  const dec = new TextDecoder();
+  const raw = dec.decode(event.target.value).trim();
+  try {
+    const d = JSON.parse(raw);
+    applyTelemetry(d);
+  } catch(e) { log('Parse err: ' + raw, 'err'); }
+}
+ 
+function applyTelemetry(d) {
+  if (d.rpmL !== undefined) document.getElementById('rpmL').textContent = d.rpmL + ' RPM';
+  if (d.rpmR !== undefined) document.getElementById('rpmR').textContent = d.rpmR + ' RPM';
+ 
+  if (d.pres) {
+    d.pres.forEach((v, i) => {
+      presValues[i] = v;
+      const card = document.getElementById('pres' + i);
+      const state = document.getElementById('presState' + i);
+      if (v) {
+        card.classList.add('detected');
+        state.textContent = 'DÉTECTÉ';
+        log('Présence ' + (i+1) + ' détectée', 'warn');
+      } else {
+        card.classList.remove('detected');
+        state.textContent = 'Aucune';
+      }
+    });
+  }
+ 
+  if (d.hum) {
+    let alertList = [];
+    d.hum.forEach((v, i) => {
+      humValues[i] = v;
+      document.getElementById('humVal' + i).innerHTML = v + '<span style="font-size:14px">%</span>';
+      document.getElementById('humBar' + i).style.width = Math.min(v, 100) + '%';
+      const card = document.getElementById('humCard' + i);
+      const badge = document.getElementById('humBadge' + i);
+      if (v >= thresholds[i]) {
+        card.classList.add('alert');
+        badge.textContent = 'ALERTE';
+        alertList.push('Capteur ' + (i+1) + ': ' + v + '% (seuil ' + thresholds[i] + '%)');
+      } else {
+        card.classList.remove('alert');
+        badge.textContent = 'OK';
+      }
+    });
+    if (alertList.length > 0) showAlert(alertList.join('\n'));
+  }
+ 
+  document.getElementById('statusRight').textContent = ts();
+}
+ 
+function onConnected(name) {
+  connected = true;
+  document.getElementById('btBtn').classList.add('on');
+  document.getElementById('btDot').classList.add('pulse');
+  document.getElementById('btLabel').textContent = name || 'Connecté';
+  document.getElementById('btDeviceName').textContent = name || '—';
+  ['btnLm','btnLp','btnRm','btnRp'].forEach(id => document.getElementById(id).classList.remove('disabled'));
+  document.getElementById('connDot').classList.add('on');
+  document.getElementById('connLabel').textContent = 'Connecté';
+  log('Connecté: ' + (name || 'inconnu'), 'ok');
+}
+ 
+function disconnectBT() {
+  if (btDevice && btDevice.gatt.connected) btDevice.gatt.disconnect();
+  clearInterval(simInterval);
+  onBTDisconnect();
+}
+ 
+function onBTDisconnect() {
+  connected = false;
+  document.getElementById('btBtn').classList.remove('on');
+  document.getElementById('btDot').classList.remove('pulse');
+  document.getElementById('btLabel').textContent = 'Connecter';
+  ['btnLm','btnLp','btnRm','btnRp'].forEach(id => document.getElementById(id).classList.add('disabled'));
+  document.getElementById('connDot').classList.remove('on');
+  document.getElementById('connLabel').textContent = 'Déconnecté';
+  document.getElementById('rpmL').textContent = '— RPM';
+  document.getElementById('rpmR').textContent = '— RPM';
+  log('Déconnecté.', 'err');
+}
+ 
+// ─── MOTOR ───────────────────────────────────────────────
+let motorVals = {L: 0, R: 0};
+let holdTimer = null;
+ 
+function startHold(side, delta) {
+  stepMotor(side, delta);
+  holdTimer = setInterval(() => stepMotor(side, delta), 150);
+}
+function stopHold() { clearInterval(holdTimer); }
+ 
+function stepMotor(side, delta) {
+  motorVals[side] = Math.max(0, Math.min(100, motorVals[side] + delta));
+  updateMotorUI(side);
+  sendBT({type: 'motor', side: side, power: motorVals[side]});
+}
+ 
+function setMotor(side, val) {
+  motorVals[side] = Math.max(0, Math.min(100, parseInt(val)));
+  updateMotorUI(side);
+}
+ 
+function updateMotorUI(side) {
+  const v = motorVals[side];
+  document.getElementById('pct' + side).textContent = v + '%';
+  document.getElementById('bar' + side).style.width = v + '%';
+}
+ 
+// ─── LAMP ─────────────────────────────────────────────────
+function toggleLamp() {
+  if (!connected) return;
+  lampOn = !lampOn;
+  const tog = document.getElementById('lampToggle');
+  const st = document.getElementById('lampStatus');
+  if (lampOn) {
+    tog.classList.add('on');
+    st.textContent = 'Allumée';
+    st.classList.add('on');
+  } else {
+    tog.classList.remove('on');
+    st.textContent = 'Éteinte';
+    st.classList.remove('on');
+  }
+  sendBT({type: 'lamp', state: lampOn ? 1 : 0});
+  log('Lampe ' + (lampOn ? 'allumée' : 'éteinte'), lampOn ? 'ok' : 'info');
+}
+ 
+// ─── COMMANDS ─────────────────────────────────────────────
+function sendCmd() {
+  const l = motorVals['L'];
+  const r = motorVals['R'];
+  sendBT({type: 'cmd', motorL: l, motorR: r, lamp: lampOn ? 1 : 0});
+  log('CMD envoyée → L:' + l + '% R:' + r + '%', 'ok');
+}
+ 
+function emergencyStop() {
+  motorVals['L'] = 0; motorVals['R'] = 0;
+  updateMotorUI('L'); updateMotorUI('R');
+  sendBT({type: 'estop'});
+  log('ARRÊT D\'URGENCE', 'err');
+}
+ 
+function sendBT(obj) {
+  if (!btChar) return;
+  const enc = new TextEncoder();
+  btChar.writeValue(enc.encode(JSON.stringify(obj) + '\n')).catch(e => log('BT write err: ' + e.message, 'err'));
+}
+ 
+// ─── ALERT ────────────────────────────────────────────────
+let alertActive = false;
+function showAlert(msg) {
+  if (alertActive) return;
+  alertActive = true;
+  document.getElementById('alertMsg').textContent = msg;
+  document.getElementById('alertOverlay').classList.add('show');
+  if (navigator.vibrate) navigator.vibrate([300, 100, 300, 100, 300]);
+  log('ALERTE HUMIDITÉ: ' + msg.replace('\n', ' | '), 'err');
+}
+function dismissAlert() {
+  alertActive = false;
+  document.getElementById('alertOverlay').classList.remove('show');
+}
+ 
+// ─── THRESHOLDS ───────────────────────────────────────────
+function updateThreshold(i, val) {
+  thresholds[i] = parseInt(val);
+  document.getElementById('humTh' + i).textContent = 'seuil: ' + thresholds[i] + '%';
+  log('Seuil humidité ' + (i+1) + ' → ' + thresholds[i] + '%', 'info');
+}
+ 
+// ─── UI HELPERS ───────────────────────────────────────────
+function showPage(name) {
+  document.querySelectorAll('.page').forEach(p => p.classList.remove('active'));
+  document.querySelectorAll('.tab').forEach(t => t.classList.remove('active'));
+  document.getElementById('page-' + name).classList.add('active');
+  event.target.classList.add('active');
+}
+ 
+function log(msg, cls) {
+  const box = document.getElementById('logBox');
+  const el = document.createElement('div');
+  el.className = 'log-entry ' + (cls || '');
+  el.textContent = '[' + ts() + '] ' + msg;
+  box.appendChild(el);
+  if (autoScroll) box.scrollTop = box.scrollHeight;
+}
+ 
+function clearLog() {
+  document.getElementById('logBox').innerHTML = '';
+  log('Journal effacé', 'info');
+}
+ 
+function toggleAutoScroll() {
+  autoScroll = !autoScroll;
+  document.getElementById('autoScrollBtn').textContent = 'Auto-scroll: ' + (autoScroll ? 'ON' : 'OFF');
+}
+ 
+function ts() {
+  const d = new Date();
+  return [d.getHours(), d.getMinutes(), d.getSeconds()].map(n => String(n).padStart(2,'0')).join(':');
+}
+</script>
+</body>
+</html>
