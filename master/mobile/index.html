@@ -1,274 +1,716 @@
 <!DOCTYPE html>
 <html lang="fr">
 <head>
-  <meta charset="UTF-8">
-  <meta name="viewport" content="width=device-width, initial-scale=1.0, user-scalable=no">
-  <meta name="theme-color" content="#0a0f1a">
-  <meta name="mobile-web-app-capable" content="yes">
-  <meta name="apple-mobile-web-app-capable" content="yes">
-  <title>SkimBot</title>
-  <link href="https://fonts.googleapis.com/css2?family=DM+Mono:wght@400;500&family=Syne:wght@400;500;700&display=swap" rel="stylesheet">
-  <link rel="stylesheet" href="styles.css">
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0, user-scalable=no, viewport-fit=cover">
+<meta name="mobile-web-app-capable" content="yes">
+<meta name="apple-mobile-web-app-capable" content="yes">
+<meta name="apple-mobile-web-app-status-bar-style" content="black-translucent">
+<title>SkimBot</title>
+<style>
+@import url('https://fonts.googleapis.com/css2?family=Share+Tech+Mono&family=Barlow+Condensed:wght@400;600;700;900&display=swap');
+
+:root {
+  --bg:      #080c10;
+  --bg2:     #0d1219;
+  --bg3:     #141c26;
+  --border:  rgba(255,255,255,0.07);
+  --border2: rgba(255,255,255,0.14);
+  --text:    #e8eef8;
+  --muted:   #4a5568;
+  --accent:  #00e5b0;
+  --blue:    #2196f3;
+  --warn:    #ffaa00;
+  --danger:  #ff3344;
+  --lamp:    #ffd54f;
+  --mono:    'Share Tech Mono', monospace;
+  --sans:    'Barlow Condensed', sans-serif;
+  --h:       100dvh;
+  --safe-l:  env(safe-area-inset-left, 0px);
+  --safe-r:  env(safe-area-inset-right, 0px);
+}
+
+*{box-sizing:border-box;margin:0;padding:0;-webkit-tap-highlight-color:transparent;}
+html,body{
+  width:100%;height:var(--h);
+  background:var(--bg);color:var(--text);
+  font-family:var(--sans);
+  overflow:hidden;
+  touch-action:none;
+}
+
+/* ── SCAN LINES ── */
+body::before{
+  content:'';position:fixed;inset:0;z-index:0;pointer-events:none;
+  background:repeating-linear-gradient(0deg,transparent,transparent 2px,rgba(0,0,0,0.18) 2px,rgba(0,0,0,0.18) 4px);
+}
+
+/* ════════════════ LAYOUT ROOT ════════════════ */
+#app{
+  position:relative;z-index:1;
+  width:100%;height:100%;
+  display:grid;
+  grid-template-rows:auto 1fr auto;
+  grid-template-areas:"top" "main" "bot";
+}
+
+/* ════════════════ TOPBAR ════════════════ */
+#topbar{
+  grid-area:top;
+  display:flex;align-items:center;justify-content:space-between;
+  padding:6px 14px 6px calc(14px + var(--safe-l));
+  padding-right:calc(14px + var(--safe-r));
+  border-bottom:1px solid var(--border);
+  background:var(--bg);
+  gap:12px;
+}
+.brand{font-size:22px;font-weight:900;letter-spacing:2px;text-transform:uppercase;white-space:nowrap;}
+.brand em{color:var(--accent);font-style:normal;}
+
+#ws-row{display:flex;align-items:center;gap:8px;flex:1;}
+#ws-ip{
+  flex:1;max-width:220px;
+  background:var(--bg3);border:1px solid var(--border2);
+  border-radius:6px;padding:5px 10px;
+  font-family:var(--mono);font-size:12px;color:var(--text);outline:none;
+}
+#ws-ip::placeholder{color:var(--muted);}
+#conn-btn{
+  padding:6px 14px;border-radius:6px;border:1px solid var(--border2);
+  background:var(--bg3);color:var(--muted);font-family:var(--sans);
+  font-size:13px;font-weight:700;letter-spacing:1px;text-transform:uppercase;
+  cursor:pointer;transition:all .15s;white-space:nowrap;
+}
+#conn-btn.on{border-color:var(--accent);color:var(--accent);background:rgba(0,229,176,.08);}
+
+.conn-status{display:flex;align-items:center;gap:5px;font-size:11px;color:var(--muted);white-space:nowrap;}
+.conn-dot{width:7px;height:7px;border-radius:50%;background:var(--muted);flex-shrink:0;}
+.conn-dot.on{background:var(--accent);box-shadow:0 0 8px var(--accent);animation:blink 1.4s infinite;}
+@keyframes blink{0%,100%{opacity:1;}50%{opacity:.3;}}
+
+.top-sensors{display:flex;gap:10px;align-items:center;}
+.top-hum{display:flex;flex-direction:column;align-items:center;gap:1px;}
+.top-hum-label{font-size:9px;color:var(--muted);letter-spacing:.5px;}
+.top-hum-val{font-family:var(--mono);font-size:14px;color:var(--accent);}
+.top-hum-val.alert-val{color:var(--danger);}
+.top-pres{font-size:11px;padding:3px 8px;border-radius:4px;border:1px solid var(--border2);color:var(--muted);letter-spacing:.5px;}
+.top-pres.detected{border-color:var(--warn);color:var(--warn);background:rgba(255,170,0,.08);}
+
+/* ════════════════ MAIN GRID ════════════════ */
+#main{
+  grid-area:main;
+  display:grid;
+  grid-template-columns:1fr auto 1fr;
+  gap:0;
+  overflow:hidden;
+}
+
+/* ── PANEL BASE ── */
+.panel{
+  padding:10px 12px;
+  display:flex;flex-direction:column;gap:8px;
+  border-right:1px solid var(--border);
+  overflow:hidden;
+}
+.panel:last-child{border-right:none;}
+.panel-title{
+  font-size:9px;font-weight:700;letter-spacing:2px;
+  text-transform:uppercase;color:var(--muted);
+  padding-bottom:6px;border-bottom:1px solid var(--border);
+}
+
+/* ════════════════ LEFT — MOTOR L ════════════════ */
+#panel-left{padding-right:calc(12px + var(--safe-l));}
+
+/* ════════════════ RIGHT — MOTOR R ════════════════ */
+#panel-right{padding-right:calc(12px + var(--safe-r));}
+
+/* ── MOTOR BLOCK ── */
+.motor-wrap{flex:1;display:flex;flex-direction:column;justify-content:space-between;gap:8px;}
+
+.motor-pct-big{
+  font-family:var(--mono);font-size:52px;line-height:1;
+  color:var(--accent);letter-spacing:-2px;
+  text-shadow:0 0 30px rgba(0,229,176,.3);
+}
+.motor-pct-big.zero{color:var(--muted);text-shadow:none;}
+
+.motor-rpm{font-size:11px;color:var(--muted);font-family:var(--mono);margin-top:-4px;}
+.motor-rpm span{color:var(--text);}
+
+/* Vertical bar */
+.vbar-wrap{
+  flex:1;
+  display:flex;flex-direction:column;justify-content:flex-end;
+  background:var(--bg3);border-radius:6px;
+  overflow:hidden;position:relative;min-height:60px;
+  border:1px solid var(--border);
+}
+.vbar-fill{
+  width:100%;background:linear-gradient(180deg,var(--accent),rgba(0,229,176,.3));
+  transition:height .25s ease;border-radius:4px;
+}
+.vbar-ticks{
+  position:absolute;inset:0;display:flex;flex-direction:column;
+  justify-content:space-between;padding:2px 0;pointer-events:none;
+}
+.vbar-tick{
+  width:100%;display:flex;align-items:center;
+  font-size:8px;color:rgba(255,255,255,.15);font-family:var(--mono);
+  padding:0 4px;
+}
+.vbar-tick::after{content:'';flex:1;height:1px;background:rgba(255,255,255,.06);margin-left:4px;}
+
+/* Big +/- buttons */
+.motor-btns{display:grid;grid-template-columns:1fr 1fr;gap:8px;}
+.mbtn{
+  height:52px;border-radius:8px;
+  background:var(--bg3);border:1px solid var(--border2);
+  color:var(--text);font-size:30px;font-weight:300;font-family:var(--mono);
+  display:flex;align-items:center;justify-content:center;
+  cursor:pointer;user-select:none;transition:all .1s;
+  -webkit-user-select:none;
+}
+.mbtn:active,.mbtn.pressing{background:var(--accent);color:var(--bg);border-color:var(--accent);transform:scale(.95);}
+.mbtn.disabled{opacity:.25;pointer-events:none;}
+
+/* STOP individual */
+.motor-stop{
+  height:36px;border-radius:6px;border:1px solid var(--border2);
+  background:transparent;color:var(--muted);
+  font-family:var(--sans);font-size:12px;font-weight:700;letter-spacing:1.5px;
+  cursor:pointer;transition:all .15s;text-transform:uppercase;
+}
+.motor-stop:active{border-color:var(--warn);color:var(--warn);}
+
+/* ════════════════ CENTER PANEL ════════════════ */
+#panel-center{
+  width:140px;
+  display:flex;flex-direction:column;gap:8px;
+  padding:10px 10px;
+  border-left:1px solid var(--border);
+  border-right:1px solid var(--border);
+}
+
+/* ESTOP */
+#estop{
+  width:100%;padding:14px 8px;
+  background:rgba(255,51,68,.1);
+  border:2px solid var(--danger);border-radius:10px;
+  color:var(--danger);font-family:var(--sans);
+  font-size:13px;font-weight:900;letter-spacing:2px;
+  text-transform:uppercase;cursor:pointer;
+  transition:all .15s;line-height:1.2;text-align:center;
+}
+#estop:active{background:var(--danger);color:#fff;transform:scale(.97);}
+#estop-flash{animation:estop-anim .08s;}
+@keyframes estop-anim{0%,100%{background:rgba(255,51,68,.1);}50%{background:var(--danger);}}
+
+/* SYNC toggle */
+.sync-row{display:flex;align-items:center;justify-content:space-between;gap:6px;}
+.sync-label{font-size:10px;color:var(--muted);letter-spacing:.5px;text-transform:uppercase;}
+.mini-toggle{
+  width:36px;height:20px;border-radius:10px;
+  background:var(--bg3);border:1px solid var(--border2);
+  position:relative;cursor:pointer;transition:background .2s;flex-shrink:0;
+}
+.mini-toggle.on{background:var(--accent);border-color:var(--accent);}
+.mini-toggle::after{
+  content:'';position:absolute;width:14px;height:14px;
+  border-radius:50%;background:#fff;top:3px;left:3px;
+  transition:transform .2s;
+}
+.mini-toggle.on::after{transform:translateX(16px);}
+
+/* LAMP */
+.lamp-row{
+  display:flex;align-items:center;justify-content:space-between;
+  background:var(--bg3);border-radius:8px;padding:8px 10px;
+  border:1px solid var(--border);cursor:pointer;
+  transition:all .2s;
+}
+.lamp-row.on{border-color:var(--lamp);background:rgba(255,213,79,.06);}
+.lamp-ico{font-size:20px;}
+.lamp-info{flex:1;padding-left:8px;}
+.lamp-name{font-size:11px;font-weight:700;letter-spacing:.5px;}
+.lamp-sub{font-size:9px;color:var(--muted);font-family:var(--mono);}
+.lamp-row.on .lamp-sub{color:var(--lamp);}
+
+/* SEND CMD */
+#send-cmd{
+  width:100%;padding:10px;
+  background:var(--bg3);border:1px solid var(--border2);
+  border-radius:8px;color:var(--text);
+  font-family:var(--sans);font-size:12px;font-weight:700;letter-spacing:1px;
+  text-transform:uppercase;cursor:pointer;transition:all .15s;
+}
+#send-cmd:active{border-color:var(--accent);color:var(--accent);}
+
+/* Presence mini */
+.pres-mini{display:flex;flex-direction:column;gap:4px;}
+.pres-mini-item{
+  display:flex;align-items:center;gap:6px;
+  padding:5px 8px;border-radius:6px;
+  background:var(--bg3);border:1px solid var(--border);
+  font-size:11px;color:var(--muted);font-family:var(--mono);
+}
+.pres-mini-item.det{border-color:var(--warn);color:var(--warn);background:rgba(255,170,0,.06);}
+.pres-dot{width:6px;height:6px;border-radius:50%;background:var(--muted);flex-shrink:0;}
+.pres-mini-item.det .pres-dot{background:var(--warn);box-shadow:0 0 6px var(--warn);}
+
+/* ════════════════ BOTTOM BAR ════════════════ */
+#botbar{
+  grid-area:bot;
+  display:flex;align-items:center;justify-content:space-between;
+  padding:5px 14px;
+  padding-left:calc(14px + var(--safe-l));
+  padding-right:calc(14px + var(--safe-r));
+  border-top:1px solid var(--border);
+  background:var(--bg2);
+  font-family:var(--mono);font-size:10px;color:var(--muted);
+  gap:12px;
+}
+#log-strip{
+  flex:1;overflow:hidden;white-space:nowrap;text-overflow:ellipsis;
+}
+.log-ok{color:var(--accent);}
+.log-warn{color:var(--warn);}
+.log-err{color:var(--danger);}
+.log-info{color:var(--blue);}
+#ts-label{flex-shrink:0;}
+
+/* ════════════════ ALERT OVERLAY ════════════════ */
+#alertOverlay{
+  display:none;position:fixed;inset:0;z-index:999;
+  background:rgba(255,51,68,.15);backdrop-filter:blur(3px);
+  justify-content:center;align-items:center;
+  animation:flashBg 1s infinite;
+}
+#alertOverlay.show{display:flex;}
+@keyframes flashBg{0%,100%{background:rgba(255,51,68,.18);}50%{background:rgba(255,51,68,.06);}}
+.alert-card{
+  background:#110810;border:1px solid var(--danger);border-radius:14px;
+  padding:24px 28px;max-width:360px;width:90%;text-align:center;
+}
+.alert-title{font-size:20px;font-weight:900;color:var(--danger);letter-spacing:2px;text-transform:uppercase;margin-bottom:8px;}
+.alert-msg{font-size:13px;color:#ffaab0;font-family:var(--mono);line-height:1.6;margin-bottom:18px;white-space:pre-wrap;}
+.alert-dismiss{
+  background:var(--danger);color:#fff;border:none;border-radius:8px;
+  padding:11px 28px;font-family:var(--sans);font-size:14px;font-weight:700;
+  letter-spacing:1px;text-transform:uppercase;cursor:pointer;
+}
+
+/* ── DPAD ── */
+.dpad{width:100%;}
+.dpad-grid{
+  display:grid;
+  grid-template-columns:repeat(3,1fr);
+  grid-template-rows:repeat(3,1fr);
+  gap:5px;aspect-ratio:1;
+}
+.dpad-btn{
+  background:var(--bg3);border:1px solid var(--border2);
+  border-radius:8px;color:var(--text);font-size:18px;
+  display:flex;align-items:center;justify-content:center;
+  cursor:pointer;user-select:none;-webkit-user-select:none;
+  transition:all .1s;
+}
+.dpad-btn:active,.dpad-btn.pressing{background:var(--accent);color:var(--bg);border-color:var(--accent);}
+.dpad-stop{font-size:14px;}
+.dpad-stop:active,.dpad-stop.pressing{background:var(--warn);color:var(--bg);border-color:var(--warn);}
+
+
+.need-conn{opacity:.3;pointer-events:none;transition:opacity .3s;}
+</style>
 </head>
 <body>
 
-<!-- ═══════════════════════════════════════════════════════════════
-     ALERTE HUMIDITÉ / HUMIDITY ALERT OVERLAY
-     ═══════════════════════════════════════════════════════════════ -->
+<!-- ALERT -->
 <div id="alertOverlay">
   <div class="alert-card">
-    <div class="alert-title">⚠ ALERTE HUMIDITÉ</div>
+    <div class="alert-title">⚠ Alerte Humidité</div>
     <div class="alert-msg" id="alertMsg">—</div>
     <button class="alert-dismiss" onclick="dismissAlert()">Acquitter</button>
   </div>
 </div>
 
-<!-- ═══════════════════════════════════════════════════════════════
-     BARRE SUPÉRIEURE / TOPBAR
-     ═══════════════════════════════════════════════════════════════ -->
-<div class="topbar">
-  <div class="app-name">Skim<span>Bot</span></div>
-  <button class="bt-btn" id="btBtn" onclick="toggleBT()">
-    <span class="bt-dot" id="btDot"></span>
-    <span id="btLabel">Connecter</span>
-  </button>
-</div>
+<div id="app">
 
-<!-- ═══════════════════════════════════════════════════════════════
-     ONGLETS / TABS
-     ═══════════════════════════════════════════════════════════════ -->
-<div class="tabs">
-  <div class="tab active"  onclick="showPage('ctrl',   event)">Contrôle</div>
-  <div class="tab"         onclick="showPage('sensors',event)">Capteurs</div>
-  <div class="tab"         onclick="showPage('settings',event)">Réglages</div>
-  <div class="tab"         onclick="showPage('log',    event)">Journal</div>
-</div>
+  <!-- ═══ TOPBAR ═══ -->
+  <div id="topbar">
+    <div class="brand">Skim<em>Bot</em></div>
 
-<!-- ═══════════════════════════════════════════════════════════════
-     PAGE CONTRÔLE / CONTROL PAGE
-     ═══════════════════════════════════════════════════════════════ -->
-<div class="page active" id="page-ctrl">
-
-  <div class="sec">Moteurs</div>
-  <div id="motorZone">
-
-    <!-- Moteur gauche -->
-    <div class="card motor-block">
-      <div class="motor-head">
-        <span class="motor-label">◀ Moteur gauche</span>
-        <span class="motor-pct" id="pctL">0%</span>
+    <div id="ws-row">
+      <input id="ws-ip" type="text" placeholder="192.168.1.xx:8765" value="192.168.1.100:8765" autocomplete="off" autocorrect="off" spellcheck="false">
+      <button id="conn-btn" onclick="toggleWS()">Connecter</button>
+      <div class="conn-status">
+        <div class="conn-dot" id="conn-dot"></div>
+        <span id="conn-label">Déco.</span>
       </div>
-      <div class="motor-ctrl">
-        <button class="motor-btn disabled" id="btnLm"
-          ontouchstart="startHold('L',-5)" ontouchend="stopHold()"
-          onmousedown="startHold('L',-5)" onmouseup="stopHold()">−</button>
-        <div style="flex:1">
-          <div class="motor-bar-wrap"><div class="motor-bar-fill" id="barL"></div></div>
-          <div class="motor-steps">
-            <span class="motor-step">0</span><span class="motor-step">25</span>
-            <span class="motor-step">50</span><span class="motor-step">75</span>
-            <span class="motor-step">100</span>
+    </div>
+
+    <div class="top-sensors">
+      <div class="top-hum"><div class="top-hum-label">HUM 1</div><div class="top-hum-val" id="th0">—</div></div>
+      <div class="top-hum"><div class="top-hum-label">HUM 2</div><div class="top-hum-val" id="th1">—</div></div>
+      <div class="top-hum"><div class="top-hum-label">HUM 3</div><div class="top-hum-val" id="th2">—</div></div>
+      <div class="top-hum"><div class="top-hum-label">HUM 4</div><div class="top-hum-val" id="th3">—</div></div>
+      <div class="top-pres" id="tp0">P1</div>
+      <div class="top-pres" id="tp1">P2</div>
+    </div>
+  </div>
+
+  <!-- ═══ MAIN ═══ -->
+  <div id="main">
+
+    <!-- LEFT — MOTEUR GAUCHE -->
+    <div class="panel" id="panel-left">
+      <div class="panel-title">                                  ◀ Moteur Gauche</div>
+      <div class="motor-wrap need-conn" id="motor-L-wrap">
+        <div style="display:flex;align-items:flex-end;gap:12px;">
+          <div class="motor-pct-big zero" id="pctL">0<span style="font-size:22px;color:var(--muted)">%</span></div>
+          <div>
+            <div class="motor-rpm">RPM: <span id="rpmL">—</span></div>
           </div>
         </div>
-        <button class="motor-btn disabled" id="btnLp"
-          ontouchstart="startHold('L',5)" ontouchend="stopHold()"
-          onmousedown="startHold('L',5)" onmouseup="stopHold()">+</button>
-      </div>
-      <div class="rpm-row">
-        <span class="rpm-label">RPM retour</span>
-        <span class="rpm-val" id="rpmL">— RPM</span>
-      </div>
-    </div>
-
-    <!-- Moteur droit -->
-    <div class="card motor-block">
-      <div class="motor-head">
-        <span class="motor-label">▶ Moteur droit</span>
-        <span class="motor-pct" id="pctR">0%</span>
-      </div>
-      <div class="motor-ctrl">
-        <button class="motor-btn disabled" id="btnRm"
-          ontouchstart="startHold('R',-5)" ontouchend="stopHold()"
-          onmousedown="startHold('R',-5)" onmouseup="stopHold()">−</button>
-        <div style="flex:1">
-          <div class="motor-bar-wrap"><div class="motor-bar-fill" id="barR"></div></div>
-          <div class="motor-steps">
-            <span class="motor-step">0</span><span class="motor-step">25</span>
-            <span class="motor-step">50</span><span class="motor-step">75</span>
-            <span class="motor-step">100</span>
+        <div class="vbar-wrap" id="vbarL-wrap">
+          <div class="vbar-fill" id="vbarL" style="height:0%"></div>
+          <div class="vbar-ticks">
+            <div class="vbar-tick">100</div>
+            <div class="vbar-tick">75</div>
+            <div class="vbar-tick">50</div>
+            <div class="vbar-tick">25</div>
+            <div class="vbar-tick">0</div>
           </div>
         </div>
-        <button class="motor-btn disabled" id="btnRp"
-          ontouchstart="startHold('R',5)" ontouchend="stopHold()"
-          onmousedown="startHold('R',5)" onmouseup="stopHold()">+</button>
-      </div>
-      <div class="rpm-row">
-        <span class="rpm-label">RPM retour</span>
-        <span class="rpm-val" id="rpmR">— RPM</span>
+        <div class="motor-btns">
+          <button class="mbtn" id="btnLm"
+            ontouchstart="startHold(event,'L',-5)" ontouchend="stopHold(event)"
+            onmousedown="startHold(event,'L',-5)" onmouseup="stopHold(event)">−</button>
+          <button class="mbtn" id="btnLp"
+            ontouchstart="startHold(event,'L',5)" ontouchend="stopHold(event)"
+            onmousedown="startHold(event,'L',5)" onmouseup="stopHold(event)">+</button>
+        </div>
+        <button class="motor-stop" onclick="stopMotor('L')">Stop L</button>
       </div>
     </div>
 
-  </div><!-- /motorZone -->
+    <!-- CENTER -->
+    <div id="panel-center">
+      <div class="panel-title" style="text-align:center">Contrôle</div>
 
-  <div class="sec">Lampe</div>
-  <div class="card lamp-card">
-    <div class="lamp-info">
-      <div class="lamp-name">Lampe de surface</div>
-      <div class="lamp-status" id="lampStatus">Éteinte</div>
+      <button id="estop" onclick="emergencyStop()">ARRÊT<br>URGENCE</button>
+
+      <!-- PAD DIRECTIONNEL -->
+      <div class="dpad need-conn" id="dpad">
+        <div class="dpad-grid">
+          <div></div>
+          <button class="dpad-btn" id="dpad-up"
+            ontouchstart="startDir(event,'avancer')" ontouchend="stopDir(event)"
+            onmousedown="startDir(event,'avancer')" onmouseup="stopDir(event)">▲</button>
+          <div></div>
+          <button class="dpad-btn" id="dpad-left"
+            ontouchstart="startDir(event,'gauche')" ontouchend="stopDir(event)"
+            onmousedown="startDir(event,'gauche')" onmouseup="stopDir(event)">◀</button>
+          <button class="dpad-btn dpad-stop" id="dpad-stop"
+            ontouchstart="sendDir('stop')" ontouchend=""
+            onmousedown="sendDir('stop')">■</button>
+          <button class="dpad-btn" id="dpad-right"
+            ontouchstart="startDir(event,'droite')" ontouchend="stopDir(event)"
+            onmousedown="startDir(event,'droite')" onmouseup="stopDir(event)">▶</button>
+          <div></div>
+          <button class="dpad-btn" id="dpad-down"
+            ontouchstart="startDir(event,'reculer')" ontouchend="stopDir(event)"
+            onmousedown="startDir(event,'reculer')" onmouseup="stopDir(event)">▼</button>
+          <div></div>
+        </div>
+      </div>
+
+      <div class="lamp-row need-conn" id="lampRow" onclick="toggleLamp()">
+        <div class="lamp-ico">💡</div>
+        <div class="lamp-info">
+          <div class="lamp-name">Lampe</div>
+          <div class="lamp-sub" id="lampSub">Éteinte</div>
+        </div>
+      </div>
+
+      <div class="pres-mini need-conn">
+        <div class="pres-mini-item" id="pmi0">
+          <div class="pres-dot"></div><span id="pmiLabel0">Présence 1 — Aucune</span>
+        </div>
+        <div class="pres-mini-item" id="pmi1">
+          <div class="pres-dot"></div><span id="pmiLabel1">Présence 2 — Aucune</span>
+        </div>
+      </div>
     </div>
-    <div class="toggle" id="lampToggle" onclick="toggleLamp()"></div>
+
+    <!-- RIGHT — MOTEUR DROIT -->
+    <div class="panel" id="panel-right">
+      <div class="panel-title">▶ Moteur Droit</div>
+      <div class="motor-wrap need-conn" id="motor-R-wrap">
+        <div style="display:flex;align-items:flex-end;gap:12px;">
+          <div class="motor-pct-big zero" id="pctR">0<span style="font-size:22px;color:var(--muted)">%</span></div>
+          <div>
+            <div class="motor-rpm">RPM: <span id="rpmR">—</span></div>
+          </div>
+        </div>
+        <div class="vbar-wrap" id="vbarR-wrap">
+          <div class="vbar-fill" id="vbarR" style="height:0%"></div>
+          <div class="vbar-ticks">
+            <div class="vbar-tick">100</div>
+            <div class="vbar-tick">75</div>
+            <div class="vbar-tick">50</div>
+            <div class="vbar-tick">25</div>
+            <div class="vbar-tick">0</div>
+          </div>
+        </div>
+        <div class="motor-btns">
+          <button class="mbtn" id="btnRm"
+            ontouchstart="startHold(event,'R',-5)" ontouchend="stopHold(event)"
+            onmousedown="startHold(event,'R',-5)" onmouseup="stopHold(event)">−</button>
+          <button class="mbtn" id="btnRp"
+            ontouchstart="startHold(event,'R',5)" ontouchend="stopHold(event)"
+            onmousedown="startHold(event,'R',5)" onmouseup="stopHold(event)">+</button>
+        </div>
+        <button class="motor-stop" onclick="stopMotor('R')">Stop R</button>
+      </div>
+    </div>
+
+  </div><!-- /main -->
+
+  <!-- ═══ BOTBAR ═══ -->
+  <div id="botbar">
+    <div id="log-strip">[--:--:--] SkimBot — en attente de connexion…</div>
+    <div id="ts-label">—:—:—</div>
   </div>
 
-  <div class="sec">Commande rapide</div>
-  <div style="display:grid;grid-template-columns:1fr 1fr;gap:10px">
-    <button class="log-btn" style="padding:12px;font-size:13px;color:var(--text);border-color:var(--border2)"
-      onclick="sendCmd()">Envoyer</button>
-    <button class="log-btn" style="padding:12px;font-size:13px;color:var(--danger);border-color:var(--danger)"
-      onclick="emergencyStop()">Arrêt urgence</button>
-  </div>
+</div><!-- /app -->
 
-</div><!-- /page-ctrl -->
+<script>
+// ════════════ STATE ════════════
+let ws          = null;
+let connected   = false;
+let lampOn      = false;
+let syncMotors  = false;
+let motorVals   = { L: 0, R: 0 };
+let holdTimer   = null;
+let alertActive = false;
+const thresholds = [80, 80, 80, 80];
 
-<!-- ═══════════════════════════════════════════════════════════════
-     PAGE CAPTEURS / SENSORS PAGE
-     ═══════════════════════════════════════════════════════════════ -->
-<div class="page" id="page-sensors">
+// ════════════ WEBSOCKET ════════════
+function toggleWS() {
+  if (connected) { disconnectWS(); return; }
+  const addr = document.getElementById('ws-ip').value.trim();
+  if (!addr) return;
+  log('Connexion à ws://' + addr + '…', 'info');
+  try {
+    ws = new WebSocket('ws://' + addr);
+    ws.onopen    = onWsOpen;
+    ws.onclose   = onWsClose;
+    ws.onerror   = e => log('WS erreur', 'err');
+    ws.onmessage = e => { try { applyTelemetry(JSON.parse(e.data)); } catch(x){} };
+  } catch(e) { log('WS invalide: ' + e.message, 'err'); }
+}
 
-  <div class="sec">Capteurs de présence</div>
-  <div class="presence-grid">
-    <div class="pres-card" id="pres0">
-      <div class="pres-icon">👁</div>
-      <div class="pres-name">Présence 1</div>
-      <div class="pres-state" id="presState0">Aucune</div>
-    </div>
-    <div class="pres-card" id="pres1">
-      <div class="pres-icon">👁</div>
-      <div class="pres-name">Présence 2</div>
-      <div class="pres-state" id="presState1">Aucune</div>
-    </div>
-  </div>
+function disconnectWS() {
+  if (ws) { ws.close(); ws = null; }
+}
 
-  <div class="sec">Capteurs d'humidité</div>
-  <div class="hum-grid">
-    <div class="hum-card" id="humCard0">
-      <div class="hum-top">
-        <span class="hum-name">Humidité 1</span>
-        <span class="hum-badge" id="humBadge0">OK</span>
-      </div>
-      <div class="hum-val" id="humVal0">—<span style="font-size:14px">%</span></div>
-      <div class="hum-bar-bg"><div class="hum-bar" id="humBar0" style="width:0%"></div></div>
-      <div class="hum-threshold" id="humTh0">seuil: 80%</div>
-    </div>
-    <div class="hum-card" id="humCard1">
-      <div class="hum-top">
-        <span class="hum-name">Humidité 2</span>
-        <span class="hum-badge" id="humBadge1">OK</span>
-      </div>
-      <div class="hum-val" id="humVal1">—<span style="font-size:14px">%</span></div>
-      <div class="hum-bar-bg"><div class="hum-bar" id="humBar1" style="width:0%"></div></div>
-      <div class="hum-threshold" id="humTh1">seuil: 80%</div>
-    </div>
-    <div class="hum-card" id="humCard2">
-      <div class="hum-top">
-        <span class="hum-name">Humidité 3</span>
-        <span class="hum-badge" id="humBadge2">OK</span>
-      </div>
-      <div class="hum-val" id="humVal2">—<span style="font-size:14px">%</span></div>
-      <div class="hum-bar-bg"><div class="hum-bar" id="humBar2" style="width:0%"></div></div>
-      <div class="hum-threshold" id="humTh2">seuil: 80%</div>
-    </div>
-    <div class="hum-card" id="humCard3">
-      <div class="hum-top">
-        <span class="hum-name">Humidité 4</span>
-        <span class="hum-badge" id="humBadge3">OK</span>
-      </div>
-      <div class="hum-val" id="humVal3">—<span style="font-size:14px">%</span></div>
-      <div class="hum-bar-bg"><div class="hum-bar" id="humBar3" style="width:0%"></div></div>
-      <div class="hum-threshold" id="humTh3">seuil: 80%</div>
-    </div>
-  </div>
+function onWsOpen() {
+  connected = true;
+  document.getElementById('conn-btn').classList.add('on');
+  document.getElementById('conn-btn').textContent = 'Déconnecter';
+  document.getElementById('conn-dot').classList.add('on');
+  document.getElementById('conn-label').textContent = 'Connecté';
+  document.querySelectorAll('.need-conn').forEach(el => el.classList.remove('need-conn'));
+  log('Connecté au Raspberry Pi', 'ok');
+}
 
-</div><!-- /page-sensors -->
+function onWsClose() {
+  connected = false;
+  ws = null;
+  document.getElementById('conn-btn').classList.remove('on');
+  document.getElementById('conn-btn').textContent = 'Connecter';
+  document.getElementById('conn-dot').classList.remove('on');
+  document.getElementById('conn-label').textContent = 'Déco.';
+  document.querySelectorAll('#motor-L-wrap,#motor-R-wrap,#lampRow,#send-cmd,.pres-mini')
+    .forEach(el => el.classList.add('need-conn'));
+  document.getElementById('rpmL').textContent = '—';
+  document.getElementById('rpmR').textContent = '—';
+  log('Déconnecté.', 'err');
+}
 
-<!-- ═══════════════════════════════════════════════════════════════
-     PAGE RÉGLAGES / SETTINGS PAGE
-     ═══════════════════════════════════════════════════════════════ -->
-<div class="page" id="page-settings">
+function sendWS(obj) {
+  if (!ws || ws.readyState !== WebSocket.OPEN) return;
+  ws.send(JSON.stringify(obj));
+}
 
-  <div class="sec">Seuils d'alerte humidité</div>
-  <div class="card">
-    <div class="thresh-row">
-      <span class="thresh-name">Humidité 1</span>
-      <div class="thresh-ctrl">
-        <input class="thresh-num" type="number" min="0" max="100" value="80" id="th0" onchange="updateThreshold(0,this.value)">
-        <span class="thresh-unit">%</span>
-      </div>
-    </div>
-    <div class="thresh-row">
-      <span class="thresh-name">Humidité 2</span>
-      <div class="thresh-ctrl">
-        <input class="thresh-num" type="number" min="0" max="100" value="80" id="th1" onchange="updateThreshold(1,this.value)">
-        <span class="thresh-unit">%</span>
-      </div>
-    </div>
-    <div class="thresh-row">
-      <span class="thresh-name">Humidité 3</span>
-      <div class="thresh-ctrl">
-        <input class="thresh-num" type="number" min="0" max="100" value="80" id="th2" onchange="updateThreshold(2,this.value)">
-        <span class="thresh-unit">%</span>
-      </div>
-    </div>
-    <div class="thresh-row">
-      <span class="thresh-name">Humidité 4</span>
-      <div class="thresh-ctrl">
-        <input class="thresh-num" type="number" min="0" max="100" value="80" id="th3" onchange="updateThreshold(3,this.value)">
-        <span class="thresh-unit">%</span>
-      </div>
-    </div>
-  </div>
+// ════════════ TELEMETRY ════════════
+function applyTelemetry(d) {
+  if (d.rpmL !== undefined) document.getElementById('rpmL').textContent = d.rpmL;
+  if (d.rpmR !== undefined) document.getElementById('rpmR').textContent = d.rpmR;
 
-  <div class="sec">Connexion Bluetooth</div>
-  <div class="card">
-    <div class="thresh-row">
-      <span class="thresh-name">Appareil cible</span>
-      <span style="font-family:var(--mono);font-size:12px;color:var(--accent)" id="btDeviceName">—</span>
-    </div>
-    <div class="thresh-row">
-      <span class="thresh-name">Protocole</span>
-      <span style="font-family:var(--mono);font-size:12px;color:var(--muted)">BLE SPP / Serial</span>
-    </div>
-    <div class="thresh-row" style="border:none">
-      <span class="thresh-name">UUID Service</span>
-      <span style="font-family:var(--mono);font-size:10px;color:var(--muted)">0000FFE0-…</span>
-    </div>
-  </div>
+  if (d.pres) {
+    d.pres.forEach((v, i) => {
+      const item  = document.getElementById('pmi' + i);
+      const lbl   = document.getElementById('pmiLabel' + i);
+      const topEl = document.getElementById('tp' + i);
+      if (v) {
+        item.classList.add('det');
+        lbl.textContent = 'Présence ' + (i+1) + ' — DÉTECTÉ';
+        topEl.classList.add('detected');
+        log('Présence ' + (i+1) + ' détectée', 'warn');
+      } else {
+        item.classList.remove('det');
+        lbl.textContent = 'Présence ' + (i+1) + ' — Aucune';
+        topEl.classList.remove('detected');
+      }
+    });
+  }
 
-</div><!-- /page-settings -->
+  if (d.hum) {
+    let alerts = [];
+    d.hum.forEach((v, i) => {
+      const el = document.getElementById('th' + i);
+      el.textContent = v + '%';
+      if (v >= thresholds[i]) {
+        el.classList.add('alert-val');
+        alerts.push('Capteur ' + (i+1) + ': ' + v + '% (seuil ' + thresholds[i] + '%)');
+      } else {
+        el.classList.remove('alert-val');
+      }
+    });
+    if (alerts.length) showAlert(alerts.join('\n'));
+  }
 
-<!-- ═══════════════════════════════════════════════════════════════
-     PAGE JOURNAL / LOG PAGE
-     ═══════════════════════════════════════════════════════════════ -->
-<div class="page" id="page-log">
-  <div class="log-controls">
-    <button class="log-btn" onclick="clearLog()">Effacer</button>
-    <button class="log-btn" id="autoScrollBtn" onclick="toggleAutoScroll()">Auto-scroll: ON</button>
-  </div>
-  <div class="log-box" id="logBox">
-    <div class="log-entry info">[--:--:--] SkimBot v1.0 — en attente de connexion BT…</div>
-  </div>
-</div>
+  document.getElementById('ts-label').textContent = ts();
+}
 
-<!-- ═══════════════════════════════════════════════════════════════
-     BARRE DE STATUT / STATUS BAR
-     ═══════════════════════════════════════════════════════════════ -->
-<div class="statusbar">
-  <span>
-    <span class="status-dot" id="connDot"></span>
-    <span id="connLabel">Déconnecté</span>
-  </span>
-  <span id="statusRight" style="color:var(--muted)">—</span>
-</div>
+// ════════════ MOTORS ════════════
+function startHold(e, side, delta) {
+  e.preventDefault();
+  const btn = e.currentTarget;
+  btn.classList.add('pressing');
+  stepMotor(side, delta);
+  holdTimer = setInterval(() => stepMotor(side, delta), 120);
+}
+function stopHold(e) {
+  if (e) e.currentTarget.classList.remove('pressing');
+  clearInterval(holdTimer);
+}
 
-<script src="script.js"></script>
+function stepMotor(side, delta) {
+  motorVals[side] = Math.max(0, Math.min(100, motorVals[side] + delta));
+  if (syncMotors) {
+    const other = side === 'L' ? 'R' : 'L';
+    motorVals[other] = motorVals[side];
+    updateMotorUI(other);
+    sendWS({ type: 'motor', side: other, power: motorVals[other] });
+  }
+  updateMotorUI(side);
+  sendWS({ type: 'motor', side: side, power: motorVals[side] });
+}
+
+function stopMotor(side) {
+  motorVals[side] = 0;
+  updateMotorUI(side);
+  sendWS({ type: 'motor', side: side, power: 0 });
+  log('Moteur ' + side + ' stoppé', 'warn');
+}
+
+function updateMotorUI(side) {
+  const v = motorVals[side];
+  const pctEl = document.getElementById('pct' + side);
+  pctEl.innerHTML = v + '<span style="font-size:22px;color:' + (v > 0 ? 'var(--muted)' : 'var(--muted)') + '">%</span>';
+  pctEl.className = 'motor-pct-big' + (v === 0 ? ' zero' : '');
+  document.getElementById('vbar' + side).style.height = v + '%';
+}
+
+// ════════════ SYNC ════════════
+function toggleSync() {
+  syncMotors = !syncMotors;
+  document.getElementById('syncToggle').classList.toggle('on', syncMotors);
+  log('Sync moteurs: ' + (syncMotors ? 'ON' : 'OFF'), 'info');
+  if (syncMotors) {
+    motorVals['R'] = motorVals['L'];
+    updateMotorUI('R');
+    sendWS({ type: 'motor', side: 'R', power: motorVals['R'] });
+  }
+}
+
+// ════════════ LAMP ════════════
+function toggleLamp() {
+  if (!connected) return;
+  lampOn = !lampOn;
+  const row = document.getElementById('lampRow');
+  const sub = document.getElementById('lampSub');
+  row.classList.toggle('on', lampOn);
+  sub.textContent = lampOn ? 'Allumée' : 'Éteinte';
+  sendWS({ type: 'lamp', state: lampOn ? 1 : 0 });
+  log('Lampe ' + (lampOn ? 'allumée' : 'éteinte'), lampOn ? 'ok' : 'info');
+}
+
+// ════════════ DIRECTION PAD ════════════
+let dirHoldTimer = null;
+
+function startDir(e, cmd) {
+  e.preventDefault();
+  e.currentTarget.classList.add('pressing');
+  sendDir(cmd);
+  dirHoldTimer = setInterval(() => sendDir(cmd), 200);
+}
+function stopDir(e) {
+  e.currentTarget.classList.remove('pressing');
+  clearInterval(dirHoldTimer);
+  sendDir('stop');
+}
+function sendDir(cmd) {
+  sendWS({ type: 'direction', cmd: cmd });
+  if (cmd !== 'stop') log('Direction → ' + cmd.toUpperCase(), 'ok');
+}
+
+function emergencyStop() {
+  motorVals.L = 0; motorVals.R = 0;
+  updateMotorUI('L'); updateMotorUI('R');
+  sendWS({ type: 'estop' });
+  log('⚠ ARRÊT D\'URGENCE', 'err');
+  const btn = document.getElementById('estop');
+  btn.classList.add('estop-flash');
+  setTimeout(() => btn.classList.remove('estop-flash'), 200);
+  if (navigator.vibrate) navigator.vibrate([100, 50, 100, 50, 400]);
+}
+
+// ════════════ ALERTS ════════════
+function showAlert(msg) {
+  if (alertActive) return;
+  alertActive = true;
+  document.getElementById('alertMsg').textContent = msg;
+  document.getElementById('alertOverlay').classList.add('show');
+  if (navigator.vibrate) navigator.vibrate([300, 100, 300, 100, 300]);
+  log('ALERTE: ' + msg.replace('\n', ' | '), 'err');
+}
+function dismissAlert() {
+  alertActive = false;
+  document.getElementById('alertOverlay').classList.remove('show');
+}
+
+// ════════════ UTILS ════════════
+function log(msg, cls) {
+  const strip = document.getElementById('log-strip');
+  const span = document.createElement('span');
+  span.className = cls ? 'log-' + cls : '';
+  span.textContent = '[' + ts() + '] ' + msg;
+  strip.innerHTML = '';
+  strip.appendChild(span);
+}
+function ts() {
+  return [new Date().getHours(), new Date().getMinutes(), new Date().getSeconds()]
+    .map(n => String(n).padStart(2,'0')).join(':');
+}
+
+// Clock tick
+setInterval(() => {
+  document.getElementById('ts-label').textContent = ts();
+}, 1000);
+</script>
 </body>
 </html>
