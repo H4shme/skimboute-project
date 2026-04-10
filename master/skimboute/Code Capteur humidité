@@ -1,0 +1,11 @@
+const int sensorPin= 0; // Déclaration de la broche du capteur
+int liquid_level;
+void setup() {
+Serial.begin(9600);
+pinMode(sensorPin, INPUT);
+}
+void loop() {
+liquid_level= analogRead(sensorPin); // Lecture de la valeur analogique du 
+Serial.println(liquid_level);// Affichage de la valeur dans le moniteur 
+delay(100);
+}
