@@ -94,9 +94,7 @@ motorR = speedY - speedX
 ---
 
 ## Dashboard Web
-Connecte ton tel au WiFi `Skimboute` / `skimboute1423` → ouvre `192.168.4.1`
-
-Affiche: direction, humidité %, µs moteurs, état radio, logs défilants, ping ESP↔Arduino toutes les 10s.
+WiFi User : `Skimboute` / Mdp : `skimboute1423` → ouvre web `192.168.4.1`
 
 ---
 
@@ -108,11 +106,3 @@ Affiche: direction, humidité %, µs moteurs, état radio, logs défilants, ping
 #define DEBUG_NONE  false // tout couper (prod)
 ```
 
----
-
-## TODO
-- [ ] Décommenter ESC dans RX quand moteurs branchés
-- [ ] Ajuster `CENTER_X/Y` selon joystick réel
-- [ ] Ajuster `DEADZONE` selon jitter terrain
-- [ ] Ajouter GPS Neo-6M
-- [ ] Boîtier étanche
