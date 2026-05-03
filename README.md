@@ -1,12 +1,12 @@
 # Skimboute 🏄
 
-Skimboard motorisé télécommandé via RF24 + dashboard web.
+Skimbot motorisé (xy) télécommandé via RF24 + vue avec dashboard web.
 
 ---
 
 ## Architecture
 ```
-Joystick (ESP32 TX)──RF24──> Arduino RX ──> 2x ESC ──> 2x Moteurs
+Joystick (ESP32 TX)──RF24──> Arduino RX ──> 2x Moteurs
          |
       WiFi AP
          |
@@ -29,6 +29,12 @@ Joystick (ESP32 TX)──RF24──> Arduino RX ──> 2x ESC ──> 2x Moteur
 ---
 
 ## Câblage
+
+**Pins RF24:**
+
+<img width="300" height="200" alt="NRF24L01-Pinout-NRF24L01-PA-LNA-" src="https://github.com/user-attachments/assets/1a143858-8a8f-47b3-919c-4f9514564d91" />
+
+
 
 **RF24 — ESP32 TX:**
 | RF24 | ESP32 |
@@ -65,6 +71,10 @@ Joystick (ESP32 TX)──RF24──> Arduino RX ──> 2x ESC ──> 2x Moteur
 | Capteur humidité SIG | Arduino A0 |
 
 ---
+
+
+
+
 
 ## Dépendances
 - [RF24](https://github.com/nRF24/RF24)
