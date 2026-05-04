@@ -2,6 +2,11 @@
 Skimbot motorisé (xy) télécommandé via RF24 + vue avec dashboard web.
 
 ---
+## Dashboard Web
+**WiFi SSID : `Skimboute` 
+MDP : `skimboute1423` 
+Browser -> `192.168.4.1`**
+
 
 ## Architecture
 ```
@@ -14,7 +19,7 @@ Joystick (ESP32 TX)──RF24──> Arduino RX ──> 2x Moteurs
 
 ---
 
-## Matériel
+## Composants du Skimbot
 | Composant | Qté |
 |---|---|
 | ESP32 (TX + WebServer) | 1 |
@@ -33,16 +38,19 @@ Joystick (ESP32 TX)──RF24──> Arduino RX ──> 2x Moteurs
 
 <img width="300" height="200" alt="NRF24L01-Pinout" src="https://github.com/user-attachments/assets/1a143858-8a8f-47b3-919c-4f9514564d91" />
 
+---
 **Couleurs Arduino:**
+---
 | Couleur | Rôle |
 |---|---|
 | ⚫️ | GND |
 | 🟢 | 3.3V / 5V |
-| 🔵 | nRF24 (tous) |
+| 🔵 | nRF24 |
 | 🟡 | iduino SIG |
 | 🔴 | Moteurs |
-
+---
 **Couleurs ESP32:**
+---
 | Couleur | Rôle |
 |---|---|
 | 🩶 | GND |
@@ -50,6 +58,10 @@ Joystick (ESP32 TX)──RF24──> Arduino RX ──> 2x Moteurs
 | ⚪️🟠 | nRF24 |
 | 🟣 | VRX / VRY |
 | 🟤 | SW joystick |
+
+---
+**Pins**
+---
 
 **RF24 — ESP32 TX:**
 | RF24 | ESP32 |
@@ -89,7 +101,7 @@ Joystick (ESP32 TX)──RF24──> Arduino RX ──> 2x Moteurs
 
 ## Dépendances
 - [RF24](https://github.com/nRF24/RF24)
-- Servo (Arduino lib manager)
+- Servo 
 
 ---
 
@@ -102,11 +114,6 @@ Joystick (ESP32 TX)──RF24──> Arduino RX ──> 2x Moteurs
 | Gauche | Tourne gauche |
 | Bouton SW (appui) | Toggle arrêt d'urgence |
 
-**Mixage différentiel:**
-```
-motorL = speedY + speedX
-motorR = speedY - speedX
-```
 
 **PWM ESC:** `1000µs` = stop · `1500µs` = neutre · `2000µs` = plein gaz
 
@@ -114,12 +121,7 @@ motorR = speedY - speedX
 
 ---
 
-## Dashboard Web
-WiFi SSID : `Skimboute` / MDP : `skimboute1423` → `192.168.4.1`
-
----
-
-## Debug flags (TX + RX)
+## Variables de Debug
 ```cpp
 #define DEBUG_TX    true  // valeurs joystick
 #define DEBUG_RF    true  // ACK radio
