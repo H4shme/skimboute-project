@@ -1,5 +1,4 @@
 # Skimboute 🏄
-
 Skimbot motorisé (xy) télécommandé via RF24 + vue avec dashboard web.
 
 ---
@@ -32,9 +31,25 @@ Joystick (ESP32 TX)──RF24──> Arduino RX ──> 2x Moteurs
 
 **Pins RF24:**
 
-<img width="300" height="200" alt="NRF24L01-Pinout-NRF24L01-PA-LNA-" src="https://github.com/user-attachments/assets/1a143858-8a8f-47b3-919c-4f9514564d91" />
+<img width="300" height="200" alt="NRF24L01-Pinout" src="https://github.com/user-attachments/assets/1a143858-8a8f-47b3-919c-4f9514564d91" />
 
+**Couleurs Arduino:**
+| Couleur | Rôle |
+|---|---|
+| ⚫️ | GND |
+| 🟢 | 3.3V / 5V |
+| 🔵 | nRF24 (tous) |
+| 🟡 | iduino SIG |
+| 🔴 | Moteurs |
 
+**Couleurs ESP32:**
+| Couleur | Rôle |
+|---|---|
+| 🩶 | GND |
+| 🟢 | 3.3V |
+| ⚪️🟠 | nRF24 |
+| 🟣 | VRX / VRY |
+| 🟤 | SW joystick |
 
 **RF24 — ESP32 TX:**
 | RF24 | ESP32 |
@@ -72,10 +87,6 @@ Joystick (ESP32 TX)──RF24──> Arduino RX ──> 2x Moteurs
 
 ---
 
-
-
-
-
 ## Dépendances
 - [RF24](https://github.com/nRF24/RF24)
 - Servo (Arduino lib manager)
@@ -97,14 +108,14 @@ motorL = speedY + speedX
 motorR = speedY - speedX
 ```
 
-**PWM ESC:** 1000µs=stop · 1500µs=neutre · 2000µs=plein gaz
+**PWM ESC:** `1000µs` = stop · `1500µs` = neutre · `2000µs` = plein gaz
 
-**Failsafe:** coupure RF >500ms → ESC 1000µs
+**Failsafe:** coupure RF >500ms → ESC `1000µs`
 
 ---
 
 ## Dashboard Web
-WiFi User : `Skimboute` / Mdp : `skimboute1423` → ouvre web `192.168.4.1`
+WiFi SSID : `Skimboute` / MDP : `skimboute1423` → `192.168.4.1`
 
 ---
 
@@ -115,4 +126,3 @@ WiFi User : `Skimboute` / Mdp : `skimboute1423` → ouvre web `192.168.4.1`
 #define DEBUG_HUM   true  // humidité
 #define DEBUG_NONE  false // tout couper (prod)
 ```
-
