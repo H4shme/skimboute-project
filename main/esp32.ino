@@ -77,6 +77,8 @@ String g_dir = "IMMOBILE";
 
 unsigned long g_lastPing  = 0;
 
+portMUX_TYPE stateMux = portMUX_INITIALIZER_UNLOCKED;
+
 // Logs à afficher sur le site
 #define MAX_LOGS 50
 String g_logs[MAX_LOGS];
@@ -219,24 +221,13 @@ void rfTask(void* pvParameters) {
     if (abs(cx) < DEADZONE) cx = 0;
     if (abs(cy) < DEADZONE) cy = 0;
 
-    dataOut.x         = (int16_t)rawX;
-    dataOut.y         = (int16_t)rawY;
+    dataOut.x         = (int16_t)cx;
+    dataOut.y         = (int16_t)cy;
     dataOut.emergency = g_emergencyLatch;
 
     unsigned long t = micros();
     bool ok = radio.write(&dataOut, sizeof(dataOut));
     unsigned long latency = micros() - t;
-    g_rfOk  = ok;
-
-    if (!ok) addLog("[RF] Signal perdu");
-
-    // ACK payload humidité
-    if (ok && radio.isAckPayloadAvailable()) {
-      radio.read(&dataAck, sizeof(dataAck));
-      // Capteur: 0=trempé, 1023=sec -> inverser
-      g_humidity = map(dataAck.humidity, 0, 1023, 0, 100);
-      g_humidity = constrain(g_humidity, 0, 100);
-    }
 
     // Direction — alignée avec RX
     int sY = 0, sX = 0;
@@ -246,16 +237,31 @@ void rfTask(void* pvParameters) {
     int mL = constrain(map(sY + sX, -100, 100, 1000, 2000), 1000, 2000);
     int mR = constrain(map(sY - sX, -100, 100, 1000, 2000), 1000, 2000);
 
+    portENTER_CRITICAL(&stateMux);
+    g_rfOk   = ok;
     g_rawX   = rawX; g_rawY = rawY;
     g_speedX = sX;   g_speedY = sY;
     g_microsL = mL;  g_microsR = mR;
-
     if      (sY == 0 && sX == 0)      g_dir = "IMMOBILE";
     else if (sY > 0  && abs(sX) < 20) g_dir = "AVANCE";
     else if (sY < 0  && abs(sX) < 20) g_dir = "RECULE";
     else if (sX > 0  && abs(sY) < 20) g_dir = "DROITE";
     else if (sX < 0  && abs(sY) < 20) g_dir = "GAUCHE";
     else                               g_dir = "MIXTE";
+    portEXIT_CRITICAL(&stateMux);
+
+    if (!ok) addLog("[RF] Signal perdu");
+
+    // ACK payload humidité
+    if (ok && radio.isAckPayloadAvailable()) {
+      radio.read(&dataAck, sizeof(dataAck));
+      // Capteur: 0=trempé, 1023=sec -> inverser
+      int hum = map(dataAck.humidity, 0, 1023, 0, 100);
+      hum = constrain(hum, 0, 100);
+      portENTER_CRITICAL(&stateMux);
+      g_humidity = hum;
+      portEXIT_CRITICAL(&stateMux);
+    }
 
     // Ping toutes les 10 secondes
     unsigned long now = millis();
@@ -265,6 +271,7 @@ void rfTask(void* pvParameters) {
              " latence=" + String(latency/1000) + "ms" +
              " HUM=" + String(g_humidity) + "%" +
            " DIR=" + g_dir);
+      g_lastPing = now;
     }
 
     if (!DEBUG_NONE && DEBUG_TX) {
