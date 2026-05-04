@@ -61,16 +61,16 @@ const int ESC_R_PIN    = 7;       // Pin PWM ESC droit
 //  Permet de tester le code sans brancher les ESC physiquement
 //  false = simulation (Serial uniquement), true = signal PWM réel envoyé
 // ----------------------------------------------------------------
-bool enableMotorL = false;        // Activer le moteur gauche
-bool enableMotorR = false;        // Activer le moteur droit
+bool enableMotorL = true;         // Activer le moteur gauche
+bool enableMotorR = true;         // Activer le moteur droit
 
 // ----------------------------------------------------------------
 //  CONSTANTES DE COMPORTEMENT
 // ----------------------------------------------------------------
 const int FAILSAFE_MS  = 500;     // Délai sans signal avant arrêt d'urgence (ms)
-const int CENTER_X     = 1830;    // Valeur ADC du joystick X au repos (calibration)
-const int CENTER_Y     = 1850;    // Valeur ADC du joystick Y au repos (calibration)
-const int DEADZONE     = 150;     // Zone morte autour du centre (ignore les micro-déviations)
+const int CENTER_X     = 0;       // TX envoie valeurs déjà centrées (cx = rawX - ADC_CENTER)
+const int CENTER_Y     = 0;       // TX envoie valeurs déjà centrées (cy = rawY - ADC_CENTER)
+const int DEADZONE     = 400;     // Zone morte autour du centre (ignore les micro-déviations)
 const int HUMIDITY_PIN = A0;      // Pin analogique du capteur humidité
 
 // ----------------------------------------------------------------
@@ -100,10 +100,10 @@ bool failsafeActive    = false; // true si le failsafe est déjà déclenché (�
 
 // ----------------------------------------------------------------
 //  FONCTION : joystickToSpeed
-//  Convertit une valeur ADC brute en vitesse [-100, +100]
+//  Convertit une valeur déjà centrée en vitesse [-100, +100]
 //  Applique la zone morte autour du centre
-//  raw    : valeur ADC reçue (0-4095)
-//  center : valeur de repos calibrée
+//  raw    : valeur centrée reçue (−ADC_CENTER .. +ADC_CENTER)
+//  center : toujours 0 (TX envoie cx/cy déjà centrés)
 // ----------------------------------------------------------------
 int joystickToSpeed(int raw, int center) {
   int offset = raw - center; // Écart par rapport au centre
@@ -111,11 +111,11 @@ int joystickToSpeed(int raw, int center) {
   // Dans la zone morte → vitesse nulle
   if (abs(offset) < DEADZONE) return 0;
 
-  // Côté négatif : mappe [−center .. −DEADZONE] → [−100 .. 0]
-  if (offset < 0) return map(offset, -center, -DEADZONE, -100, 0);
+  // Côté négatif : mappe [−2047 .. −DEADZONE] → [−100 .. 0]
+  if (offset < 0) return map(offset, -2047, -DEADZONE, -100, 0);
 
-  // Côté positif : mappe [+DEADZONE .. 4095−center] → [0 .. +100]
-  else            return map(offset, DEADZONE, 4095 - center, 0, 100);
+  // Côté positif : mappe [+DEADZONE .. +2047] → [0 .. +100]
+  else            return map(offset, DEADZONE, 2047, 0, 100);
 }
 
 // ----------------------------------------------------------------
