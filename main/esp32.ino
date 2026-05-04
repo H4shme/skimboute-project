@@ -1,32 +1,62 @@
+/*
+ESP32 CODE
+
+ ____________________
+| Joystick | ESP32   |
+|----------|---------|
+| VRX      | GPIO 34 |
+| VRY      | GPIO 35 |
+| SW       | GPIO 32 |
+| VCC      | 3.3V    |
+| GND      | GND     |
+/////////////////////
+ ________________
+| RF24 | ESP32   |
+|------|---------|
+| CE   | GPIO 17 |
+| CSN  | GPIO 5  |
+| SCK  | GPIO 18 |
+| MOSI | GPIO 23 |
+| MISO | GPIO 19 |
+/////////////////
+
+*/
+
+
+//  Dependances
 #include <SPI.h>
 #include <RF24.h>
 #include <WiFi.h>
 #include <WebServer.h>
-
+// Variables de debug
 #define DEBUG_TX   true
 #define DEBUG_RF   false
 #define DEBUG_HUM  true
 #define DEBUG_NONE false
 
+
+// Mise en place du WiFi
 const char* AP_SSID = "Skimboute";
 const char* AP_PASS = "skimboute1423";
 WebServer server(80);
 
+// Set-Up radio
 RF24 radio(17, 5);
 const byte address[6] = "00001";
-
+//Constantes (pins)
 const int xPin       = 34;
 const int yPin       = 35;
 const int SW_PIN     = 32;
 const int DEADZONE   = 400;
 const int ADC_CENTER = 2047;
-
+//Récupérer la data du rf24
 struct DataOut {
   int16_t x;
   int16_t y;
   bool    emergency;
 } __attribute__((packed));
 
+// Data de l'humidité
 struct DataAck {
   int16_t humidity;
 } __attribute__((packed));
@@ -34,6 +64,7 @@ struct DataAck {
 DataOut dataOut;
 DataAck dataAck;
 
+// Variables
 volatile int  g_rawX      = 0, g_rawY = 0;
 volatile int  g_speedX    = 0, g_speedY = 0;
 volatile int  g_microsL   = 1500, g_microsR = 1500;
@@ -46,7 +77,7 @@ String g_dir = "IMMOBILE";
 
 unsigned long g_lastPing  = 0;
 
-// ─── Logs ──────────────────────────────────────────────
+// Logs à afficher sur le site
 #define MAX_LOGS 50
 String g_logs[MAX_LOGS];
 int    g_logIndex = 0;
@@ -59,7 +90,7 @@ void addLog(String msg) {
   portEXIT_CRITICAL(&logMux);
 }
 
-// ─── Web ───────────────────────────────────────────────
+// Site Web 192.168.4.1
 void handleRoot() {
   String html = R"(
 <!DOCTYPE html><html><head>
@@ -129,7 +160,7 @@ void handleRoot() {
 )";
   server.send(200, "text/html", html);
 }
-
+// Recup / Afficher la data sur le site
 void handleData() {
   String json = "{";
   json += "\"rawX\":"      + String(g_rawX)      + ",";
@@ -146,27 +177,29 @@ void handleData() {
   server.send(200, "application/json", json);
 }
 
+// Répond à la requête GET /logs — envoie les derniers logs au navigateur
 void handleLogs() {
-  int from    = server.hasArg("from") ? server.arg("from").toInt() : 0;
-  int current = g_logIndex;
-  int start   = max(from, current - MAX_LOGS);
+  int from    = server.hasArg("from") ? server.arg("from").toInt() : 0; // là où le navigateur s'est arrêté
+  int current = g_logIndex;                                              // nombre total de logs enregistrés
+  int start   = max(from, current - MAX_LOGS);                          // on remonte pas plus loin que le buffer
 
   String json = "{\"entries\":[";
   bool first  = true;
+
   for (int i = start; i < current; i++) {
-    String entry = g_logs[i % MAX_LOGS];
-    if (entry.length() == 0) continue;
+    String entry = g_logs[i % MAX_LOGS]; // lecture dans le tableau circulaire
+    if (entry.length() == 0) continue;   // ligne vide, on passe
     if (!first) json += ",";
-    // Escape quotes
-    entry.replace("\"", "\\\"");
+    entry.replace("\"", "\\\"");         // guillemets dans le texte → on les échappe
     json += "\"" + entry + "\"";
     first = false;
   }
-  json += "],\"next\":" + String(current) + "}";
+
+  json += "],\"next\":" + String(current) + "}"; // "next" = index à renvoyer au prochain appel
   server.send(200, "application/json", json);
 }
 
-// ─── RF Task core 1 ────────────────────────────────────
+// Tache du module rf24 sur le core 1
 void rfTask(void* pvParameters) {
   while(1) {
     int rawX = analogRead(xPin);
@@ -248,7 +281,7 @@ void rfTask(void* pvParameters) {
   }
 }
 
-// ─── WiFi Task core 0 ──────────────────────────────────
+// Tache Wifi sur le core 0
 void wifiTask(void* pvParameters) {
   while(1) {
     server.handleClient();
@@ -270,7 +303,7 @@ void setup() {
   radio.enableAckPayload();
   radio.openWritingPipe(address);
   radio.stopListening();
-  if (!DEBUG_NONE) Serial.println("[OK] RF24 ready");
+  if (!DEBUG_NONE) Serial.println("[OK] RF24 PRET");
 
   WiFi.softAP(AP_SSID, AP_PASS);
   if (!DEBUG_NONE) {
@@ -282,9 +315,9 @@ void setup() {
   server.on("/data", handleData);
   server.on("/logs", handleLogs);
   server.begin();
-  if (!DEBUG_NONE) Serial.println("[OK] Web server ready");
+  if (!DEBUG_NONE) Serial.println("[OK] Serveur Web Pret");
 
-  addLog("[BOOT] Skimboute démarré");
+  addLog("[BOOT] Skimbote démarré");
 
   xTaskCreatePinnedToCore(rfTask,   "RF",   4096, NULL, 1, NULL, 1);
   xTaskCreatePinnedToCore(wifiTask, "WiFi", 4096, NULL, 1, NULL, 0);
